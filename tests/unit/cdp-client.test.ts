@@ -194,10 +194,10 @@ describe("CdpClient", () => {
 			const c = client!;
 			const promise = c.send("Runtime.evaluate", { expression: "1+1" });
 
-			c.handleMessage(JSON.stringify({ id: 1, result: { result: { value: 2 } } }));
+			c.handleMessage(JSON.stringify({ id: 1, result: { result: { type: "number", value: 2 } } }));
 
 			const result = await promise;
-			expect(result).toEqual({ result: { value: 2 } });
+			expect(result).toEqual({ result: { type: "number", value: 2 } });
 		});
 
 		test("send() rejects on CDP error response", async () => {

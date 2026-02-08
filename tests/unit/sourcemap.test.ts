@@ -1,6 +1,6 @@
-import { describe, expect, test, beforeEach } from "bun:test";
-import { SourceMapResolver } from "../../src/sourcemap/resolver.ts";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
+import { SourceMapResolver } from "../../src/sourcemap/resolver.ts";
 
 const FIXTURE_DIR = resolve(import.meta.dir, "../fixtures/ts-app");
 const DIST_DIR = resolve(FIXTURE_DIR, "dist");
@@ -49,7 +49,11 @@ describe("SourceMapResolver", () => {
 			const tmpPath = resolve(DIST_DIR, "invalid.js.map");
 			await Bun.write(tmpPath, "not json{{{");
 			try {
-				const loaded = await resolver.loadSourceMap("5", resolve(DIST_DIR, "invalid.js"), "invalid.js.map");
+				const loaded = await resolver.loadSourceMap(
+					"5",
+					resolve(DIST_DIR, "invalid.js"),
+					"invalid.js.map",
+				);
 				expect(loaded).toBe(false);
 			} finally {
 				// Cleanup

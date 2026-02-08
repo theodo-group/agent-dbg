@@ -1,5 +1,9 @@
 import { existsSync, unlinkSync, writeFileSync } from "node:fs";
-import type { DaemonRequest, DaemonResponse } from "../protocol/messages.ts";
+import {
+	type DaemonRequest,
+	DaemonRequestSchema,
+	type DaemonResponse,
+} from "../protocol/messages.ts";
 import { ensureSocketDir, getLockPath, getSocketPath } from "./paths.ts";
 
 type RequestHandler = (req: DaemonRequest) => Promise<DaemonResponse>;
@@ -80,9 +84,9 @@ export class DaemonServer {
 		socket: { write(data: string | Buffer | Uint8Array): number; end(): void },
 		line: string,
 	): void {
-		let request: DaemonRequest;
+		let json: unknown;
 		try {
-			request = JSON.parse(line) as DaemonRequest;
+			json = JSON.parse(line);
 		} catch {
 			const errResponse: DaemonResponse = {
 				ok: false,
@@ -92,6 +96,27 @@ export class DaemonServer {
 			socket.end();
 			return;
 		}
+
+		const parsed = DaemonRequestSchema.safeParse(json);
+		if (!parsed.success) {
+			const obj = json as Record<string, unknown> | null;
+			const cmd =
+				obj && typeof obj === "object" && typeof obj.cmd === "string" ? obj.cmd : undefined;
+			const errResponse: DaemonResponse = cmd
+				? {
+						ok: false,
+						error: `Unknown command: ${cmd}`,
+						suggestion: "-> Try: ndbg --help",
+					}
+				: {
+						ok: false,
+						error: "Invalid request: must have { cmd: string, args: object }",
+					};
+			socket.write(`${JSON.stringify(errResponse)}\n`);
+			socket.end();
+			return;
+		}
+		const request: DaemonRequest = parsed.data;
 
 		if (!this.handler) {
 			const errResponse: DaemonResponse = {

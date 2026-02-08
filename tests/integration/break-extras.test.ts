@@ -108,11 +108,7 @@ describe("breakable", () => {
 			await session.launch(["node", "tests/fixtures/simple-app.js"], { brk: true });
 			await waitForState(session, "paused");
 
-			const locations = await session.getBreakableLocations(
-				"tests/fixtures/simple-app.js",
-				4,
-				8,
-			);
+			const locations = await session.getBreakableLocations("tests/fixtures/simple-app.js", 4, 8);
 
 			expect(Array.isArray(locations)).toBe(true);
 			expect(locations.length).toBeGreaterThan(0);
@@ -134,9 +130,9 @@ describe("breakable", () => {
 			await session.launch(["node", "tests/fixtures/simple-app.js"], { brk: true });
 			await waitForState(session, "paused");
 
-			await expect(
-				session.getBreakableLocations("nonexistent.js", 1, 5),
-			).rejects.toThrow("No loaded script matches");
+			await expect(session.getBreakableLocations("nonexistent.js", 1, 5)).rejects.toThrow(
+				"No loaded script matches",
+			);
 		} finally {
 			await session.stop();
 		}
@@ -144,9 +140,9 @@ describe("breakable", () => {
 
 	test("throws without CDP connection", async () => {
 		const session = new DebugSession("test-breakable-no-cdp");
-		await expect(
-			session.getBreakableLocations("file.js", 1, 5),
-		).rejects.toThrow("No active debug session");
+		await expect(session.getBreakableLocations("file.js", 1, 5)).rejects.toThrow(
+			"No active debug session",
+		);
 	});
 });
 
@@ -188,10 +184,7 @@ describe("restart-frame", () => {
 	test("throws when not paused", async () => {
 		const session = new DebugSession("test-restart-frame-not-paused");
 		try {
-			await session.launch(
-				["node", "-e", "setInterval(() => {}, 100)"],
-				{ brk: false },
-			);
+			await session.launch(["node", "-e", "setInterval(() => {}, 100)"], { brk: false });
 			expect(session.sessionState).toBe("running");
 
 			await expect(session.restartFrame()).rejects.toThrow("not paused");

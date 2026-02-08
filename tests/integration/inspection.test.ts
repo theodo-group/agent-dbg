@@ -18,9 +18,7 @@ async function waitForState(
 /**
  * Launch and advance to the debugger statement in inspect-app.js (line 7).
  */
-async function launchAndPauseAtDebugger(
-	sessionName: string,
-): Promise<DebugSession> {
+async function launchAndPauseAtDebugger(sessionName: string): Promise<DebugSession> {
 	const session = new DebugSession(sessionName);
 	await session.launch(["node", "tests/fixtures/inspect-app.js"], {
 		brk: true,
@@ -109,10 +107,7 @@ describe("Inspection: eval", () => {
 	test("eval throws when not paused", async () => {
 		const session = new DebugSession("test-eval-not-paused");
 		try {
-			await session.launch(
-				["node", "-e", "setInterval(() => {}, 100)"],
-				{ brk: false },
-			);
+			await session.launch(["node", "-e", "setInterval(() => {}, 100)"], { brk: false });
 			expect(session.sessionState).toBe("running");
 
 			await expect(session.eval("1 + 1")).rejects.toThrow("not paused");
@@ -193,10 +188,7 @@ describe("Inspection: vars", () => {
 	test("getVars throws when not paused", async () => {
 		const session = new DebugSession("test-vars-not-paused");
 		try {
-			await session.launch(
-				["node", "-e", "setInterval(() => {}, 100)"],
-				{ brk: false },
-			);
+			await session.launch(["node", "-e", "setInterval(() => {}, 100)"], { brk: false });
 			expect(session.sessionState).toBe("running");
 
 			await expect(session.getVars()).rejects.toThrow("not paused");
@@ -263,9 +255,7 @@ describe("Inspection: props", () => {
 				if (nestedProp?.ref) {
 					// Can expand the nested object further
 					const nestedProps = await session.getProps(nestedProp.ref);
-					const deepProp = nestedProps.find(
-						(p) => p.name === "deep",
-					);
+					const deepProp = nestedProps.find((p) => p.name === "deep");
 					expect(deepProp).toBeDefined();
 					expect(deepProp?.value).toBe("true");
 				}
@@ -298,9 +288,7 @@ describe("Inspection: props", () => {
 	test("getProps on unknown ref throws", async () => {
 		const session = await launchAndPauseAtDebugger("test-props-unknown");
 		try {
-			await expect(session.getProps("@v999")).rejects.toThrow(
-				"Unknown ref",
-			);
+			await expect(session.getProps("@v999")).rejects.toThrow("Unknown ref");
 		} finally {
 			await session.stop();
 		}
@@ -314,9 +302,7 @@ describe("Inspection: props", () => {
 			expect(numVar).toBeDefined();
 
 			if (numVar) {
-				await expect(session.getProps(numVar.ref)).rejects.toThrow(
-					"primitive",
-				);
+				await expect(session.getProps(numVar.ref)).rejects.toThrow("primitive");
 			}
 		} finally {
 			await session.stop();

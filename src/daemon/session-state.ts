@@ -1,0 +1,258 @@
+import type { RemoteObject } from "../formatter/values.ts";
+import { formatValue } from "../formatter/values.ts";
+import type { DebugSession, StateOptions, StateSnapshot } from "./session.ts";
+
+export async function buildState(
+	session: DebugSession,
+	options: StateOptions = {},
+): Promise<StateSnapshot> {
+	if (session.sessionState !== "paused" || !session.cdp || !session.pauseInfo) {
+		return { status: session.sessionState };
+	}
+
+	// Clear volatile refs at the START of building state
+	session.refs.clearVolatile();
+
+	const showAll = !options.vars && !options.stack && !options.breakpoints && !options.code;
+	const linesContext = options.lines ?? 3;
+	const snapshot: StateSnapshot = {
+		status: "paused",
+		reason: session.pauseInfo.reason,
+	};
+
+	// Determine which frame to inspect
+	let frameIndex = 0;
+	if (options.frame) {
+		const entry = session.refs.resolve(options.frame);
+		if (entry?.meta?.frameIndex !== undefined) {
+			frameIndex = entry.meta.frameIndex as number;
+		}
+	}
+
+	const callFrames = session.pausedCallFrames;
+	const targetFrame = callFrames[frameIndex];
+
+	if (!targetFrame) {
+		return snapshot;
+	}
+
+	const frameLocation = targetFrame.location;
+	const frameScriptId = frameLocation?.scriptId;
+	const frameLine = frameLocation?.lineNumber ?? 0;
+	const frameColumn = frameLocation?.columnNumber;
+	let frameUrl = frameScriptId ? (session.scripts.get(frameScriptId)?.url ?? "") : "";
+	let displayLine = frameLine + 1; // CDP is 0-based, display 1-based
+	let displayColumn = frameColumn !== undefined ? frameColumn + 1 : undefined;
+
+	// Try source map translation for pause location (unless --generated)
+	if (frameScriptId && !options.generated) {
+		const resolved = session.resolveOriginalLocation(
+			frameScriptId,
+			frameLine + 1,
+			frameColumn ?? 0,
+		);
+		if (resolved) {
+			frameUrl = resolved.url;
+			displayLine = resolved.line;
+			displayColumn = resolved.column;
+		}
+	}
+
+	snapshot.location = {
+		url: frameUrl,
+		line: displayLine,
+	};
+	if (displayColumn !== undefined) {
+		snapshot.location.column = displayColumn;
+	}
+
+	// Source code
+	if (showAll || options.code) {
+		try {
+			if (frameScriptId) {
+				let scriptSource: string | null = null;
+				let useOriginalLines = false;
+
+				if (!options.generated) {
+					// Try to get original source from source map
+					const smOriginal = session.sourceMapResolver.toOriginal(
+						frameScriptId,
+						frameLine + 1,
+						frameColumn ?? 0,
+					);
+					if (smOriginal) {
+						scriptSource = session.sourceMapResolver.getOriginalSource(
+							frameScriptId,
+							smOriginal.source,
+						);
+						useOriginalLines = scriptSource !== null;
+					}
+					// Fallback: script has source map but line is unmapped — still show original source
+					if (!scriptSource) {
+						const primarySource = session.sourceMapResolver.getScriptOriginalUrl(frameScriptId);
+						if (primarySource) {
+							scriptSource = session.sourceMapResolver.getOriginalSource(
+								frameScriptId,
+								primarySource,
+							);
+							useOriginalLines = scriptSource !== null;
+						}
+					}
+				}
+
+				if (!scriptSource) {
+					const sourceResult = await session.cdp.send("Debugger.getScriptSource", {
+						scriptId: frameScriptId,
+					});
+					scriptSource = sourceResult.scriptSource;
+				}
+
+				const sourceLines = scriptSource.split("\n");
+				// Use original line for windowing if we have source-mapped content
+				const currentLine0 = useOriginalLines ? displayLine - 1 : frameLine;
+				const startLine = Math.max(0, currentLine0 - linesContext);
+				const endLine = Math.min(sourceLines.length - 1, currentLine0 + linesContext);
+
+				const lines: Array<{ line: number; text: string; current?: boolean }> = [];
+				for (let i = startLine; i <= endLine; i++) {
+					const entry: { line: number; text: string; current?: boolean } = {
+						line: i + 1, // 1-based
+						text: sourceLines[i] ?? "",
+					};
+					if (i === currentLine0) {
+						entry.current = true;
+					}
+					lines.push(entry);
+				}
+				snapshot.source = { lines };
+			}
+		} catch {
+			// Source not available
+		}
+	}
+
+	// Stack frames
+	if (showAll || options.stack) {
+		const stackFrames: Array<{
+			ref: string;
+			functionName: string;
+			file: string;
+			line: number;
+			column?: number;
+			isAsync?: boolean;
+		}> = [];
+
+		for (let i = 0; i < callFrames.length; i++) {
+			const frame = callFrames[i];
+			if (!frame) continue;
+			const callFrameId = frame.callFrameId;
+			const funcName = frame.functionName || "(anonymous)";
+			const loc = frame.location;
+			const sid = loc.scriptId;
+			const lineNum = loc.lineNumber + 1; // 1-based
+			const colNum = loc.columnNumber;
+			let url = session.scripts.get(sid)?.url ?? "";
+			let stackLine = lineNum;
+			let stackCol = colNum !== undefined ? colNum + 1 : undefined;
+			let resolvedName: string | null = null;
+
+			if (!options.generated) {
+				const resolved = session.resolveOriginalLocation(sid, lineNum, colNum ?? 0);
+				if (resolved) {
+					url = resolved.url;
+					stackLine = resolved.line;
+					stackCol = resolved.column;
+				}
+				// Get original function name from exact mapping
+				const smOriginal = session.sourceMapResolver.toOriginal(sid, lineNum, colNum ?? 0);
+				resolvedName = smOriginal?.name ?? null;
+			}
+
+			const ref = session.refs.addFrame(callFrameId, funcName, { frameIndex: i });
+
+			const stackEntry: {
+				ref: string;
+				functionName: string;
+				file: string;
+				line: number;
+				column?: number;
+				isAsync?: boolean;
+			} = {
+				ref,
+				functionName: resolvedName ?? funcName,
+				file: url,
+				line: stackLine,
+			};
+			if (stackCol !== undefined) {
+				stackEntry.column = stackCol;
+			}
+
+			stackFrames.push(stackEntry);
+		}
+
+		snapshot.stack = stackFrames;
+	}
+
+	// Local variables
+	if (showAll || options.vars) {
+		try {
+			const scopeChain = targetFrame.scopeChain;
+			if (scopeChain) {
+				const locals: Array<{ ref: string; name: string; value: string }> = [];
+
+				for (const scope of scopeChain) {
+					const scopeType = scope.type;
+
+					// By default only show "local" scope; with --all-scopes include "closure" too
+					if (scopeType === "local" || (options.allScopes && scopeType === "closure")) {
+						const scopeObj = scope.object;
+						const objectId = scopeObj.objectId;
+						if (!objectId) continue;
+
+						const propsResult = await session.cdp.send("Runtime.getProperties", {
+							objectId,
+							ownProperties: true,
+							generatePreview: true,
+						});
+
+						const properties = propsResult.result;
+
+						for (const prop of properties) {
+							const propName = prop.name;
+							const propValue = prop.value as RemoteObject | undefined;
+
+							if (!propValue) continue;
+
+							// Skip internal properties
+							if (propName.startsWith("__")) continue;
+
+							const remoteId = propValue.objectId ?? `primitive:${propName}`;
+							const ref = session.refs.addVar(remoteId as string, propName);
+
+							locals.push({
+								ref,
+								name: propName,
+								value: formatValue(propValue),
+							});
+						}
+					}
+
+					// Skip "global" scope unless explicitly requested
+					if (scopeType === "global") continue;
+				}
+
+				snapshot.locals = locals;
+			}
+		} catch {
+			// Variables not available
+		}
+	}
+
+	// Breakpoint count
+	if (showAll || options.breakpoints) {
+		const bpEntries = session.refs.list("BP");
+		snapshot.breakpointCount = bpEntries.length;
+	}
+
+	return snapshot;
+}

@@ -10,8 +10,7 @@ registerCommand("break", async (args) => {
 		return 1;
 	}
 
-	const patternFlag =
-		typeof args.flags.pattern === "string" ? args.flags.pattern : undefined;
+	const patternFlag = typeof args.flags.pattern === "string" ? args.flags.pattern : undefined;
 	const shouldContinue = args.flags.continue === true;
 
 	let file: string;
@@ -56,14 +55,10 @@ registerCommand("break", async (args) => {
 		}
 	}
 
-	const condition =
-		typeof args.flags.condition === "string" ? args.flags.condition : undefined;
+	const condition = typeof args.flags.condition === "string" ? args.flags.condition : undefined;
 	const hitCount =
-		typeof args.flags["hit-count"] === "string"
-			? parseInt(args.flags["hit-count"], 10)
-			: undefined;
-	const logTemplate =
-		typeof args.flags.log === "string" ? args.flags.log : undefined;
+		typeof args.flags["hit-count"] === "string" ? parseInt(args.flags["hit-count"], 10) : undefined;
+	const logTemplate = typeof args.flags.log === "string" ? args.flags.log : undefined;
 
 	const client = new DaemonClient(session);
 

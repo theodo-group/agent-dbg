@@ -31,15 +31,13 @@ server.onRequest(async (req: DaemonRequest): Promise<DaemonResponse> => {
 			return { ok: true, data: "pong" };
 
 		case "launch": {
-			const command = req.args.command as string[];
-			const brk = (req.args.brk as boolean | undefined) ?? true;
-			const port = req.args.port as number | undefined;
+			const { command, brk = true, port } = req.args;
 			const result = await debugSession.launch(command, { brk, port });
 			return { ok: true, data: result };
 		}
 
 		case "attach": {
-			const target = req.args.target as string;
+			const { target } = req.args;
 			const result = await debugSession.attach(target);
 			return { ok: true, data: result };
 		}
@@ -48,19 +46,7 @@ server.onRequest(async (req: DaemonRequest): Promise<DaemonResponse> => {
 			return { ok: true, data: debugSession.getStatus() };
 
 		case "state": {
-			const stateOptions = {
-				vars: req.args.vars as boolean | undefined,
-				stack: req.args.stack as boolean | undefined,
-				breakpoints: req.args.breakpoints as boolean | undefined,
-				code: req.args.code as boolean | undefined,
-				compact: req.args.compact as boolean | undefined,
-				depth: req.args.depth as number | undefined,
-				lines: req.args.lines as number | undefined,
-				frame: req.args.frame as string | undefined,
-				allScopes: req.args.allScopes as boolean | undefined,
-				generated: req.args.generated as boolean | undefined,
-			};
-			const stateResult = await debugSession.buildState(stateOptions);
+			const stateResult = await debugSession.buildState(req.args);
 			return { ok: true, data: stateResult };
 		}
 
@@ -70,7 +56,7 @@ server.onRequest(async (req: DaemonRequest): Promise<DaemonResponse> => {
 		}
 
 		case "step": {
-			const mode = (req.args.mode as "over" | "into" | "out") ?? "over";
+			const { mode = "over" } = req.args;
 			await debugSession.step(mode);
 			return { ok: true, data: debugSession.getStatus() };
 		}
@@ -81,24 +67,23 @@ server.onRequest(async (req: DaemonRequest): Promise<DaemonResponse> => {
 		}
 
 		case "run-to": {
-			const file = req.args.file as string;
-			const line = req.args.line as number;
+			const { file, line } = req.args;
 			await debugSession.runTo(file, line);
 			return { ok: true, data: debugSession.getStatus() };
 		}
 
 		case "break": {
-			const file = req.args.file as string;
-			const line = req.args.line as number;
-			const condition = req.args.condition as string | undefined;
-			const hitCount = req.args.hitCount as number | undefined;
-			const urlRegex = req.args.urlRegex as string | undefined;
-			const bpResult = await debugSession.setBreakpoint(file, line, { condition, hitCount, urlRegex });
+			const { file, line, condition, hitCount, urlRegex } = req.args;
+			const bpResult = await debugSession.setBreakpoint(file, line, {
+				condition,
+				hitCount,
+				urlRegex,
+			});
 			return { ok: true, data: bpResult };
 		}
 
 		case "break-rm": {
-			const ref = req.args.ref as string;
+			const { ref } = req.args;
 			if (ref === "all") {
 				await debugSession.removeAllBreakpoints();
 				return { ok: true, data: "all removed" };
@@ -111,114 +96,71 @@ server.onRequest(async (req: DaemonRequest): Promise<DaemonResponse> => {
 			return { ok: true, data: debugSession.listBreakpoints() };
 
 		case "logpoint": {
-			const lpFile = req.args.file as string;
-			const lpLine = req.args.line as number;
-			const template = req.args.template as string;
-			const lpCondition = req.args.condition as string | undefined;
-			const maxEmissions = req.args.maxEmissions as number | undefined;
-			const lpResult = await debugSession.setLogpoint(lpFile, lpLine, template, {
-				condition: lpCondition,
+			const { file, line, template, condition, maxEmissions } = req.args;
+			const lpResult = await debugSession.setLogpoint(file, line, template, {
+				condition,
 				maxEmissions,
 			});
 			return { ok: true, data: lpResult };
 		}
 
 		case "catch": {
-			const mode = req.args.mode as "all" | "uncaught" | "caught" | "none";
+			const { mode } = req.args;
 			await debugSession.setExceptionPause(mode);
 			return { ok: true, data: mode };
 		}
 
 		case "source": {
-			const sourceOptions = {
-				file: req.args.file as string | undefined,
-				lines: req.args.lines as number | undefined,
-				all: req.args.all as boolean | undefined,
-				generated: req.args.generated as boolean | undefined,
-			};
-			const sourceResult = await debugSession.getSource(sourceOptions);
+			const sourceResult = await debugSession.getSource(req.args);
 			return { ok: true, data: sourceResult };
 		}
 
 		case "scripts": {
-			const filter = req.args.filter as string | undefined;
+			const { filter } = req.args;
 			const scriptsResult = debugSession.getScripts(filter);
 			return { ok: true, data: scriptsResult };
 		}
 
 		case "stack": {
-			const stackOptions = {
-				asyncDepth: req.args.asyncDepth as number | undefined,
-				generated: req.args.generated as boolean | undefined,
-			};
-			const stackResult = debugSession.getStack(stackOptions);
+			const stackResult = debugSession.getStack(req.args);
 			return { ok: true, data: stackResult };
 		}
 
 		case "search": {
-			const query = req.args.query as string;
-			const searchOptions = {
-				scriptId: req.args.scriptId as string | undefined,
-				isRegex: req.args.isRegex as boolean | undefined,
-				caseSensitive: req.args.caseSensitive as boolean | undefined,
-			};
+			const { query, ...searchOptions } = req.args;
 			const searchResult = await debugSession.searchInScripts(query, searchOptions);
 			return { ok: true, data: searchResult };
 		}
 
 		case "console": {
-			const consoleOptions = {
-				level: req.args.level as string | undefined,
-				since: req.args.since as number | undefined,
-				clear: req.args.clear as boolean | undefined,
-			};
-			const consoleResult = debugSession.getConsoleMessages(consoleOptions);
+			const consoleResult = debugSession.getConsoleMessages(req.args);
 			return { ok: true, data: consoleResult };
 		}
 
 		case "exceptions": {
-			const exceptionsOptions = {
-				since: req.args.since as number | undefined,
-			};
-			const exceptionsResult = debugSession.getExceptions(exceptionsOptions);
+			const exceptionsResult = debugSession.getExceptions(req.args);
 			return { ok: true, data: exceptionsResult };
 		}
 
 		case "eval": {
-			const expression = req.args.expression as string;
-			const evalOptions = {
-				frame: req.args.frame as string | undefined,
-				awaitPromise: req.args.awaitPromise as boolean | undefined,
-				throwOnSideEffect: req.args.throwOnSideEffect as boolean | undefined,
-				timeout: req.args.timeout as number | undefined,
-			};
+			const { expression, ...evalOptions } = req.args;
 			const evalResult = await debugSession.eval(expression, evalOptions);
 			return { ok: true, data: evalResult };
 		}
 
 		case "vars": {
-			const varsOptions = {
-				frame: req.args.frame as string | undefined,
-				names: req.args.names as string[] | undefined,
-				allScopes: req.args.allScopes as boolean | undefined,
-			};
-			const varsResult = await debugSession.getVars(varsOptions);
+			const varsResult = await debugSession.getVars(req.args);
 			return { ok: true, data: varsResult };
 		}
 
 		case "props": {
-			const propsRef = req.args.ref as string;
-			const propsOptions = {
-				own: req.args.own as boolean | undefined,
-				internal: req.args.internal as boolean | undefined,
-				depth: req.args.depth as number | undefined,
-			};
-			const propsResult = await debugSession.getProps(propsRef, propsOptions);
+			const { ref, ...propsOptions } = req.args;
+			const propsResult = await debugSession.getProps(ref, propsOptions);
 			return { ok: true, data: propsResult };
 		}
 
 		case "blackbox": {
-			const patterns = req.args.patterns as string[];
+			const { patterns } = req.args;
 			const result = await debugSession.addBlackbox(patterns);
 			return { ok: true, data: result };
 		}
@@ -228,55 +170,49 @@ server.onRequest(async (req: DaemonRequest): Promise<DaemonResponse> => {
 		}
 
 		case "blackbox-rm": {
-			const patterns = req.args.patterns as string[];
+			const { patterns } = req.args;
 			const result = await debugSession.removeBlackbox(patterns);
 			return { ok: true, data: result };
 		}
 
 		case "set": {
-			const name = req.args.name as string;
-			const value = req.args.value as string;
-			const frame = req.args.frame as string | undefined;
+			const { name, value, frame } = req.args;
 			const result = await debugSession.setVariable(name, value, { frame });
 			return { ok: true, data: result };
 		}
 
 		case "set-return": {
-			const value = req.args.value as string;
+			const { value } = req.args;
 			const result = await debugSession.setReturnValue(value);
 			return { ok: true, data: result };
 		}
 
 		case "hotpatch": {
-			const file = req.args.file as string;
-			const source = req.args.source as string;
-			const dryRun = req.args.dryRun as boolean | undefined;
+			const { file, source, dryRun } = req.args;
 			const result = await debugSession.hotpatch(file, source, { dryRun });
 			return { ok: true, data: result };
 		}
 
 		case "break-toggle": {
-			const toggleRef = req.args.ref as string;
-			const toggleResult = await debugSession.toggleBreakpoint(toggleRef);
+			const { ref } = req.args;
+			const toggleResult = await debugSession.toggleBreakpoint(ref);
 			return { ok: true, data: toggleResult };
 		}
 
 		case "breakable": {
-			const breakableFile = req.args.file as string;
-			const startLine = req.args.startLine as number;
-			const endLine = req.args.endLine as number;
-			const breakableResult = await debugSession.getBreakableLocations(breakableFile, startLine, endLine);
+			const { file, startLine, endLine } = req.args;
+			const breakableResult = await debugSession.getBreakableLocations(file, startLine, endLine);
 			return { ok: true, data: breakableResult };
 		}
 
 		case "restart-frame": {
-			const frameRef = req.args.frameRef as string | undefined;
+			const { frameRef } = req.args;
 			const restartResult = await debugSession.restartFrame(frameRef);
 			return { ok: true, data: restartResult };
 		}
 
 		case "sourcemap": {
-			const smFile = req.args.file as string | undefined;
+			const { file: smFile } = req.args;
 			if (smFile) {
 				const match = debugSession.sourceMapResolver.findScriptForSource(smFile);
 				if (match) {
@@ -300,13 +236,6 @@ server.onRequest(async (req: DaemonRequest): Promise<DaemonResponse> => {
 				process.exit(0);
 			}, 50);
 			return { ok: true, data: "stopped" };
-
-		default:
-			return {
-				ok: false,
-				error: `Unknown command: ${req.cmd}`,
-				suggestion: "-> Try: ndbg --help",
-			};
 	}
 });
 

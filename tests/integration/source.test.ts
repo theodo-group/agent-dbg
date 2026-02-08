@@ -153,7 +153,7 @@ describe("Inspection commands", () => {
 			}
 
 			await session.step("into");
-			let line = session.getStatus().pauseInfo?.line;
+			const line = session.getStatus().pauseInfo?.line;
 			if (line !== undefined && line >= 10) {
 				await session.step("into");
 			}

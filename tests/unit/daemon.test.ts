@@ -103,7 +103,9 @@ describe("DaemonClient", () => {
 			const response = await client.request("ping");
 
 			expect(response.ok).toBe(true);
-			expect(response.data).toBe("pong");
+			if (response.ok) {
+				expect(response.data).toBe("pong");
+			}
 		} finally {
 			await server.stop();
 		}
@@ -114,17 +116,22 @@ describe("DaemonClient", () => {
 		const server = new DaemonServer(session, { idleTimeout: 60 });
 
 		server.onRequest(async (req) => {
-			return { ok: true, data: req.args };
+			if (req.cmd === "eval") {
+				return { ok: true, data: req.args };
+			}
+			return { ok: true, data: "no-args" };
 		});
 
 		await server.start();
 
 		try {
 			const client = new DaemonClient(session);
-			const response = await client.request("test", { foo: "bar", num: 42 });
+			const response = await client.request("eval", { expression: "1+1" });
 
 			expect(response.ok).toBe(true);
-			expect(response.data).toEqual({ foo: "bar", num: 42 });
+			if (response.ok) {
+				expect(response.data).toEqual({ expression: "1+1" });
+			}
 		} finally {
 			await server.stop();
 		}
@@ -134,23 +141,22 @@ describe("DaemonClient", () => {
 		const session = testSession("unk");
 		const server = new DaemonServer(session, { idleTimeout: 60 });
 
-		server.onRequest(async (req) => {
-			return {
-				ok: false,
-				error: `Unknown command: ${req.cmd}`,
-				suggestion: "-> Try: ndbg --help",
-			};
+		server.onRequest(async () => {
+			return { ok: true };
 		});
 
 		await server.start();
 
 		try {
 			const client = new DaemonClient(session);
+			// Unknown commands are rejected by schema validation in the server
 			const response = await client.request("nonexistent");
 
 			expect(response.ok).toBe(false);
-			expect(response.error).toContain("Unknown command");
-			expect(response.suggestion).toBeDefined();
+			if (!response.ok) {
+				expect(response.error).toContain("Unknown command");
+				expect(response.suggestion).toBeDefined();
+			}
 		} finally {
 			await server.stop();
 		}

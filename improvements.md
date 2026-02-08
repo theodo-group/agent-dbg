@@ -1,4 +1,0 @@
-- [ ] stronger typing use zod mini to defined and parse DaemonRequest and DaemonResponse (entry.ts and server.ts)
-- [ ] for the cdp client and handler import dependencies devtools-protocol and reuse types from protocol.d.ts (ProtocolMapping), adapt cdp.send signature, update daemon/session.ts accordingly
-- [ ] split daemon/session.ts handlers into multiple files
-- [ ] update help accordingly to all commands and options

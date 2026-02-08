@@ -1,5 +1,10 @@
-import { TraceMap, originalPositionFor, generatedPositionFor, LEAST_UPPER_BOUND } from "@jridgewell/trace-mapping";
-import { resolve, dirname } from "node:path";
+import { dirname, resolve } from "node:path";
+import {
+	generatedPositionFor,
+	LEAST_UPPER_BOUND,
+	originalPositionFor,
+	TraceMap,
+} from "@jridgewell/trace-mapping";
 
 export interface OriginalPosition {
 	source: string;
@@ -59,9 +64,7 @@ export class SourceMapResolver {
 			} else {
 				// File-based source map — resolve relative to the script
 				let mapPath: string;
-				const scriptPath = scriptUrl.startsWith("file://")
-					? scriptUrl.slice(7)
-					: scriptUrl;
+				const scriptPath = scriptUrl.startsWith("file://") ? scriptUrl.slice(7) : scriptUrl;
 
 				if (sourceMapURL.startsWith("/")) {
 					mapPath = sourceMapURL;
@@ -80,9 +83,7 @@ export class SourceMapResolver {
 			const sources: string[] = (traceMap.sources as string[]) ?? [];
 
 			// Resolve source paths relative to the script location
-			const scriptPath = scriptUrl.startsWith("file://")
-				? scriptUrl.slice(7)
-				: scriptUrl;
+			const scriptPath = scriptUrl.startsWith("file://") ? scriptUrl.slice(7) : scriptUrl;
 			const scriptDir = dirname(scriptPath);
 
 			const resolvedSources = sources.map((s) => {
@@ -97,7 +98,8 @@ export class SourceMapResolver {
 				mapUrl: sourceMapURL,
 				sources,
 				resolvedSources,
-				hasSourcesContent: Array.isArray(traceMap.sourcesContent) && traceMap.sourcesContent.some((c) => c != null),
+				hasSourcesContent:
+					Array.isArray(traceMap.sourcesContent) && traceMap.sourcesContent.some((c) => c != null),
 			};
 
 			this.maps.set(scriptId, entry);
@@ -221,7 +223,10 @@ export class SourceMapResolver {
 			const resolved = entry.resolvedSources[i];
 			if (
 				(raw && (raw === sourcePath || raw.endsWith(sourcePath) || sourcePath.endsWith(raw))) ||
-				(resolved && (resolved === sourcePath || resolved.endsWith(sourcePath) || sourcePath.endsWith(resolved)))
+				(resolved &&
+					(resolved === sourcePath ||
+						resolved.endsWith(sourcePath) ||
+						sourcePath.endsWith(resolved)))
 			) {
 				return sourcesContent[i] ?? null;
 			}

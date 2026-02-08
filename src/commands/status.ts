@@ -37,11 +37,7 @@ registerCommand("status", async (args) => {
 		console.log(JSON.stringify(data, null, 2));
 	} else {
 		const stateIcon =
-			data.state === "paused"
-				? "Paused"
-				: data.state === "running"
-					? "Running"
-					: "Idle";
+			data.state === "paused" ? "Paused" : data.state === "running" ? "Running" : "Idle";
 		console.log(`${stateIcon} — Session "${data.session}" — ${data.state}`);
 
 		if (data.pid) console.log(`  PID: ${data.pid}`);

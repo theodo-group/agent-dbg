@@ -160,47 +160,70 @@ function printHelp(): void {
 Usage: ndbg <command> [options]
 
 Session:
-  launch [--brk] <command...>    Start + attach debugger
-  attach <pid|ws-url|port>       Attach to running process
-  stop                           Kill process + daemon
-  sessions [--cleanup]           List active sessions
-  status                         Session info
+  launch [--brk] <command...>      Start + attach debugger
+  attach <pid|ws-url|port>         Attach to running process
+  stop                             Kill process + daemon
+  sessions [--cleanup]             List active sessions
+  status                           Session info
 
 Execution (returns state automatically):
-  continue                       Resume execution
-  step [over|into|out]           Step one statement
-  run-to <file>:<line>           Continue to location
-  pause                          Interrupt running process
+  continue                         Resume execution
+  step [over|into|out]             Step one statement
+  run-to <file>:<line>             Continue to location
+  pause                            Interrupt running process
+  restart-frame [@fN]              Re-execute frame from beginning
 
 Inspection:
-  state [-v|-s|-b|-c]            Debug state snapshot
-  vars [name...]                 Show local variables
-  stack                          Show call stack
-  eval <expression>              Evaluate expression
-  props <@ref>                   Expand object properties
-  source [--lines N]             Show source code
+  state [-v|-s|-b|-c]              Debug state snapshot
+    [--depth N] [--lines N] [--frame @fN] [--all-scopes] [--compact] [--generated]
+  vars [name...]                   Show local variables
+    [--frame @fN] [--all-scopes]
+  stack [--async-depth N]          Show call stack
+    [--generated]
+  eval <expression>                Evaluate expression
+    [--frame @fN] [--silent] [--timeout MS] [--side-effect-free]
+  props <@ref>                     Expand object properties
+    [--own] [--depth N] [--private] [--internal]
+  source [--lines N]               Show source code
+    [--file <path>] [--all] [--generated]
+  search <query>                   Search loaded scripts
+    [--regex] [--case-sensitive] [--file <id>]
+  scripts [--filter <pattern>]     List loaded scripts
+  console [--since N] [--level]    Console output
+    [--clear]
+  exceptions [--since N]           Captured exceptions
 
 Breakpoints:
-  break <file>:<line>            Set breakpoint
-  break-rm <BP#|all>             Remove breakpoint
-  break-ls                       List breakpoints
-  logpoint <file>:<line> <tpl>   Set logpoint
-  catch [all|uncaught|none]      Pause on exceptions
+  break <file>:<line>              Set breakpoint
+    [--condition <expr>] [--hit-count <n>] [--continue] [--pattern <regex>:<line>]
+  break-rm <BP#|all>               Remove breakpoint
+  break-ls                         List breakpoints
+  break-toggle <BP#|all>           Enable/disable breakpoints
+  breakable <file>:<start>-<end>   List valid breakpoint locations
+  logpoint <file>:<line> <tpl>     Set logpoint
+    [--condition <expr>]
+  catch [all|uncaught|caught|none] Pause on exceptions
 
 Mutation:
-  set <@ref|name> <value>        Change variable value
-  hotpatch <file>                Live-edit script source
+  set <@ref|name> <value>          Change variable value
+  set-return <value>               Change return value (at return point)
+  hotpatch <file> [--dry-run]      Live-edit script source
 
-Profiling:
-  cpu start|stop                 CPU profiling
-  heap usage|snapshot|diff       Heap analysis
+Blackboxing:
+  blackbox <pattern...>            Skip stepping into matching scripts
+  blackbox-ls                      List current patterns
+  blackbox-rm <pattern|all>        Remove patterns
+
+Source Maps:
+  sourcemap [file]                 Show source map info
+  sourcemap --disable              Disable resolution globally
 
 Global flags:
-  --session NAME                 Target session (default: "default")
-  --json                         JSON output
-  --color                        ANSI colors
-  --help-agent                   LLM reference card
-  --help                         Show this help`);
+  --session NAME                   Target session (default: "default")
+  --json                           JSON output
+  --color                          ANSI colors
+  --help-agent                     LLM reference card
+  --help                           Show this help`);
 }
 
 function printHelpAgent(): void {
@@ -217,34 +240,48 @@ CORE LOOP:
 REFS: Every output assigns @refs. Use them everywhere:
   @v1..@vN  variables    |  ndbg props @v1, ndbg set @v2 true
   @f0..@fN  stack frames |  ndbg eval --frame @f1
-  BP#1..N   breakpoints  |  ndbg break-rm BP#1
-  HS#1..N   heap snaps   |  ndbg heap diff HS#1 HS#2
+  BP#1..N   breakpoints  |  ndbg break-rm BP#1, ndbg break-toggle BP#1
 
 EXECUTION (all return state automatically):
   ndbg continue              Resume to next breakpoint
   ndbg step [over|into|out]  Step one statement
   ndbg run-to file:line      Continue to location
   ndbg pause                 Interrupt running process
-  ndbg restart-frame @f0     Re-run current function
+  ndbg restart-frame [@fN]   Re-run frame from beginning
 
 BREAKPOINTS:
-  ndbg break file:line [--condition expr]
-  ndbg logpoint file:line "template \${var}"
-  ndbg catch [all|uncaught|none]
-  ndbg blackbox "node_modules/**"
+  ndbg break file:line [--condition expr] [--hit-count N] [--continue]
+  ndbg break --pattern "regex":line
+  ndbg break-rm <BP#|all>    Remove breakpoints
+  ndbg break-ls              List breakpoints
+  ndbg break-toggle <BP#|all>  Enable/disable breakpoints
+  ndbg breakable file:start-end  Valid breakpoint locations
+  ndbg logpoint file:line "template \${var}" [--condition expr]
+  ndbg catch [all|uncaught|caught|none]
 
 INSPECTION:
-  ndbg state [-v|-s|-b|-c] [--depth N]
-  ndbg vars [name...]
-  ndbg eval <expr>                    (await supported)
-  ndbg props @ref [--depth N]
-  ndbg search "query" [--regex]
+  ndbg state [-v|-s|-b|-c] [--depth N] [--lines N] [--frame @fN] [--all-scopes] [--compact] [--generated]
+  ndbg vars [name...] [--frame @fN] [--all-scopes]
+  ndbg stack [--async-depth N] [--generated]
+  ndbg eval <expr> [--frame @fN] [--silent] [--timeout MS] [--side-effect-free]
+  ndbg props @ref [--own] [--depth N] [--private] [--internal]
+  ndbg source [--lines N] [--file path] [--all] [--generated]
+  ndbg search "query" [--regex] [--case-sensitive] [--file id]
+  ndbg scripts [--filter pattern]
+  ndbg console [--since N] [--level type] [--clear]
+  ndbg exceptions [--since N]
 
 MUTATION:
-  ndbg set @v1 <value>        Change variable
-  ndbg hotpatch <file>        Live-edit code (no restart!)
+  ndbg set <@ref|name> <value>   Change variable
+  ndbg set-return <value>        Change return value (at return point)
+  ndbg hotpatch <file> [--dry-run]  Live-edit code (no restart!)
 
-PROFILING:
-  ndbg cpu start / stop [--top N]
-  ndbg heap usage | snapshot | diff | gc`);
+BLACKBOXING:
+  ndbg blackbox <pattern...>     Skip stepping into matching scripts
+  ndbg blackbox-ls               List current patterns
+  ndbg blackbox-rm <pattern|all> Remove patterns
+
+SOURCE MAPS:
+  ndbg sourcemap [file]          Show source map info
+  ndbg sourcemap --disable       Disable resolution globally`);
 }

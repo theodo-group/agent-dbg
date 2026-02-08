@@ -121,13 +121,13 @@ describe("Blackbox patterns", () => {
 	test("blackbox throws when no session", async () => {
 		const session = new DebugSession("test-blackbox-no-session");
 		try {
-			await expect(
-				session.addBlackbox(["node_modules"]),
-			).rejects.toThrow("No active debug session");
+			await expect(session.addBlackbox(["node_modules"])).rejects.toThrow(
+				"No active debug session",
+			);
 
-			await expect(
-				session.removeBlackbox(["node_modules"]),
-			).rejects.toThrow("No active debug session");
+			await expect(session.removeBlackbox(["node_modules"])).rejects.toThrow(
+				"No active debug session",
+			);
 		} finally {
 			await session.stop();
 		}

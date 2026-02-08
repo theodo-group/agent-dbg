@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from "node:fs";
-import type { DaemonRequest, DaemonResponse } from "../protocol/messages.ts";
+import { type DaemonResponse, DaemonResponseSchema } from "../protocol/messages.ts";
 import { getSocketDir, getSocketPath } from "./paths.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -14,8 +14,7 @@ export class DaemonClient {
 	}
 
 	async request(cmd: string, args: Record<string, unknown> = {}): Promise<DaemonResponse> {
-		const req: DaemonRequest = { cmd, args };
-		const message = `${JSON.stringify(req)}\n`;
+		const message = `${JSON.stringify({ cmd, args })}\n`;
 		const sessionName = this.session;
 		const socketPath = this.socketPath;
 
@@ -45,7 +44,12 @@ export class DaemonClient {
 								settled = true;
 								clearTimeout(timer);
 								try {
-									resolve(JSON.parse(line) as DaemonResponse);
+									const parsed = DaemonResponseSchema.safeParse(JSON.parse(line));
+									if (!parsed.success) {
+										reject(new Error("Invalid response from daemon"));
+									} else {
+										resolve(parsed.data);
+									}
 								} catch {
 									reject(new Error("Invalid JSON response from daemon"));
 								}
@@ -58,7 +62,12 @@ export class DaemonClient {
 							clearTimeout(timer);
 							if (buffer.trim()) {
 								try {
-									resolve(JSON.parse(buffer.trim()) as DaemonResponse);
+									const parsed = DaemonResponseSchema.safeParse(JSON.parse(buffer.trim()));
+									if (!parsed.success) {
+										reject(new Error("Invalid response from daemon"));
+									} else {
+										resolve(parsed.data);
+									}
 								} catch {
 									reject(new Error("Invalid JSON response from daemon"));
 								}

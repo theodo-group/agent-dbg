@@ -173,10 +173,7 @@ describe("Execution control", () => {
 	test("pause interrupts running process", async () => {
 		const session = new DebugSession("test-exec-pause");
 		try {
-			await session.launch(
-				["node", "-e", "setInterval(() => {}, 100)"],
-				{ brk: false },
-			);
+			await session.launch(["node", "-e", "setInterval(() => {}, 100)"], { brk: false });
 			// Process should be running
 			expect(session.sessionState).toBe("running");
 
@@ -194,10 +191,7 @@ describe("Execution control", () => {
 	test("continue throws when not paused", async () => {
 		const session = new DebugSession("test-exec-continue-err");
 		try {
-			await session.launch(
-				["node", "-e", "setInterval(() => {}, 100)"],
-				{ brk: false },
-			);
+			await session.launch(["node", "-e", "setInterval(() => {}, 100)"], { brk: false });
 			expect(session.sessionState).toBe("running");
 
 			await expect(session.continue()).rejects.toThrow("not paused");
@@ -209,10 +203,7 @@ describe("Execution control", () => {
 	test("step throws when not paused", async () => {
 		const session = new DebugSession("test-exec-step-err");
 		try {
-			await session.launch(
-				["node", "-e", "setInterval(() => {}, 100)"],
-				{ brk: false },
-			);
+			await session.launch(["node", "-e", "setInterval(() => {}, 100)"], { brk: false });
 			expect(session.sessionState).toBe("running");
 
 			await expect(session.step("over")).rejects.toThrow("not paused");
@@ -224,10 +215,7 @@ describe("Execution control", () => {
 	test("pause throws when not running", async () => {
 		const session = new DebugSession("test-exec-pause-err");
 		try {
-			await session.launch(
-				["node", "-e", "setTimeout(() => {}, 30000)"],
-				{ brk: true },
-			);
+			await session.launch(["node", "-e", "setTimeout(() => {}, 30000)"], { brk: true });
 			await waitForState(session, "paused");
 
 			await expect(session.pause()).rejects.toThrow("not running");

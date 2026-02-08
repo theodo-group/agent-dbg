@@ -63,9 +63,7 @@ registerCommand("props", async (args) => {
 	}
 
 	// Format output with aligned columns
-	const maxRefLen = Math.max(
-		...data.map((p) => (p.ref ? p.ref.length : 0)),
-	);
+	const maxRefLen = Math.max(...data.map((p) => (p.ref ? p.ref.length : 0)));
 	const maxNameLen = Math.max(...data.map((p) => p.name.length));
 
 	for (const prop of data) {

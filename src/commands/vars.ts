@@ -1,7 +1,7 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
-import { formatVariables } from "../formatter/variables.ts";
 import type { Variable } from "../formatter/variables.ts";
+import { formatVariables } from "../formatter/variables.ts";
 
 registerCommand("vars", async (args) => {
 	const session = args.global.session;

@@ -15,15 +15,13 @@ registerCommand("attach", async (args) => {
 	// Check if daemon already running
 	if (DaemonClient.isRunning(session)) {
 		console.error(`Session "${session}" is already active`);
-		console.error("  -> Try: ndbg stop --session " + session);
+		console.error(`  -> Try: ndbg stop --session ${session}`);
 		return 1;
 	}
 
 	// Spawn daemon
 	const timeout =
-		typeof args.flags.timeout === "string"
-			? parseInt(args.flags.timeout, 10)
-			: undefined;
+		typeof args.flags.timeout === "string" ? parseInt(args.flags.timeout, 10) : undefined;
 	await spawnDaemon(session, { timeout });
 
 	// Send attach command

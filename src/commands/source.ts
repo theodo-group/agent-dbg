@@ -1,7 +1,7 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
-import { formatSource } from "../formatter/source.ts";
 import type { SourceLine } from "../formatter/source.ts";
+import { formatSource } from "../formatter/source.ts";
 
 registerCommand("source", async (args) => {
 	const session = args.global.session;

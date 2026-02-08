@@ -1,12 +1,12 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
-import { formatSource } from "../formatter/source.ts";
-import type { SourceLine } from "../formatter/source.ts";
-import { formatStack } from "../formatter/stack.ts";
-import type { StackFrame } from "../formatter/stack.ts";
-import { formatVariables } from "../formatter/variables.ts";
-import type { Variable } from "../formatter/variables.ts";
 import type { StateSnapshot } from "../daemon/session.ts";
+import type { SourceLine } from "../formatter/source.ts";
+import { formatSource } from "../formatter/source.ts";
+import type { StackFrame } from "../formatter/stack.ts";
+import { formatStack } from "../formatter/stack.ts";
+import type { Variable } from "../formatter/variables.ts";
+import { formatVariables } from "../formatter/variables.ts";
 
 registerCommand("state", async (args) => {
 	const session = args.global.session;
@@ -61,9 +61,7 @@ registerCommand("state", async (args) => {
 	}
 
 	// Paused state — header
-	const loc = data.location
-		? `${data.location.url}:${data.location.line}`
-		: "unknown";
+	const loc = data.location ? `${data.location.url}:${data.location.line}` : "unknown";
 	const reason = data.reason ?? "unknown";
 	console.log(`\u23F8 Paused at ${loc} (${reason})`);
 

@@ -5,23 +5,16 @@ import { spawnDaemon } from "../daemon/spawn.ts";
 registerCommand("launch", async (args) => {
 	const session = args.global.session;
 	const brk = args.flags.brk === true;
-	const port =
-		typeof args.flags.port === "string"
-			? parseInt(args.flags.port, 10)
-			: undefined;
+	const port = typeof args.flags.port === "string" ? parseInt(args.flags.port, 10) : undefined;
 	const timeout =
-		typeof args.flags.timeout === "string"
-			? parseInt(args.flags.timeout, 10)
-			: undefined;
+		typeof args.flags.timeout === "string" ? parseInt(args.flags.timeout, 10) : undefined;
 
 	// Reconstruct the full command from subcommand + positionals.
 	// The parser treats the second non-flag word as subcommand, but for launch
 	// it should be part of the command to execute.
 	// e.g., "ndbg launch node app.js" -> subcommand="node", positionals=["app.js"]
 	// We need command = ["node", "app.js"]
-	const command = args.subcommand
-		? [args.subcommand, ...args.positionals]
-		: [...args.positionals];
+	const command = args.subcommand ? [args.subcommand, ...args.positionals] : [...args.positionals];
 
 	if (command.length === 0) {
 		console.error("No command specified");
@@ -32,7 +25,7 @@ registerCommand("launch", async (args) => {
 	// Check if daemon already running for this session
 	if (DaemonClient.isRunning(session)) {
 		console.error(`Session "${session}" is already active`);
-		console.error("  -> Try: ndbg stop --session " + session);
+		console.error(`  -> Try: ndbg stop --session ${session}`);
 		return 1;
 	}
 
@@ -62,9 +55,7 @@ registerCommand("launch", async (args) => {
 	} else {
 		console.log(`Session "${session}" started (pid ${data.pid})`);
 		if (data.paused && data.pauseInfo) {
-			const loc = data.pauseInfo.url
-				? `${data.pauseInfo.url}:${data.pauseInfo.line}`
-				: "unknown";
+			const loc = data.pauseInfo.url ? `${data.pauseInfo.url}:${data.pauseInfo.line}` : "unknown";
 			console.log(`Paused at ${loc}`);
 		} else {
 			console.log("Running");

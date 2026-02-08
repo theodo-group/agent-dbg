@@ -13,7 +13,7 @@ registerCommand("logpoint", async (args) => {
 	const target = args.subcommand;
 	if (!target) {
 		console.error("No target specified");
-		console.error("  -> Try: ndbg logpoint src/app.ts:42 \"x =\", x");
+		console.error('  -> Try: ndbg logpoint src/app.ts:42 "x =", x');
 		return 1;
 	}
 
@@ -21,7 +21,7 @@ registerCommand("logpoint", async (args) => {
 	const lastColon = target.lastIndexOf(":");
 	if (lastColon === -1 || lastColon === 0) {
 		console.error(`Invalid logpoint target: "${target}"`);
-		console.error("  -> Try: ndbg logpoint src/app.ts:42 \"x =\", x");
+		console.error('  -> Try: ndbg logpoint src/app.ts:42 "x =", x');
 		return 1;
 	}
 
@@ -29,7 +29,7 @@ registerCommand("logpoint", async (args) => {
 	const line = parseInt(target.slice(lastColon + 1), 10);
 	if (Number.isNaN(line) || line <= 0) {
 		console.error(`Invalid line number in "${target}"`);
-		console.error("  -> Try: ndbg logpoint src/app.ts:42 \"x =\", x");
+		console.error('  -> Try: ndbg logpoint src/app.ts:42 "x =", x');
 		return 1;
 	}
 
@@ -37,12 +37,11 @@ registerCommand("logpoint", async (args) => {
 	const template = args.positionals[0];
 	if (!template) {
 		console.error("No log template specified");
-		console.error("  -> Try: ndbg logpoint src/app.ts:42 \"x =\", x");
+		console.error('  -> Try: ndbg logpoint src/app.ts:42 "x =", x');
 		return 1;
 	}
 
-	const condition =
-		typeof args.flags.condition === "string" ? args.flags.condition : undefined;
+	const condition = typeof args.flags.condition === "string" ? args.flags.condition : undefined;
 	const maxEmissions =
 		typeof args.flags["max-emissions"] === "string"
 			? parseInt(args.flags["max-emissions"], 10)

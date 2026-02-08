@@ -179,11 +179,7 @@ describe("Breakpoint integration", () => {
 			await waitForState(session, "paused");
 
 			await session.setBreakpoint("tests/fixtures/simple-app.js", 5);
-			await session.setLogpoint(
-				"tests/fixtures/simple-app.js",
-				11,
-				'"add called"',
-			);
+			await session.setLogpoint("tests/fixtures/simple-app.js", 11, '"add called"');
 			await session.setBreakpoint("tests/fixtures/simple-app.js", 38);
 
 			const list = session.listBreakpoints();
@@ -211,15 +207,11 @@ describe("Breakpoint integration", () => {
 
 	test("setBreakpoint without CDP throws error", async () => {
 		const session = new DebugSession("test-bp-no-cdp");
-		await expect(
-			session.setBreakpoint("file.js", 1),
-		).rejects.toThrow("No active debug session");
+		await expect(session.setBreakpoint("file.js", 1)).rejects.toThrow("No active debug session");
 	});
 
 	test("setExceptionPause without CDP throws error", async () => {
 		const session = new DebugSession("test-catch-no-cdp");
-		await expect(
-			session.setExceptionPause("all"),
-		).rejects.toThrow("No active debug session");
+		await expect(session.setExceptionPause("all")).rejects.toThrow("No active debug session");
 	});
 });

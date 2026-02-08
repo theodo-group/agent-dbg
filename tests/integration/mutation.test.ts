@@ -18,9 +18,7 @@ async function waitForState(
 /**
  * Launch and advance to the debugger statement in mutation-app.js (line 7).
  */
-async function launchAndPauseAtDebugger(
-	sessionName: string,
-): Promise<DebugSession> {
+async function launchAndPauseAtDebugger(sessionName: string): Promise<DebugSession> {
 	const session = new DebugSession(sessionName);
 	await session.launch(["node", "tests/fixtures/mutation-app.js"], {
 		brk: true,
@@ -68,15 +66,10 @@ describe("Mutation: setVariable", () => {
 	test("set variable throws when not paused", async () => {
 		const session = new DebugSession("test-set-var-not-paused");
 		try {
-			await session.launch(
-				["node", "-e", "setInterval(() => {}, 100)"],
-				{ brk: false },
-			);
+			await session.launch(["node", "-e", "setInterval(() => {}, 100)"], { brk: false });
 			expect(session.sessionState).toBe("running");
 
-			await expect(
-				session.setVariable("x", "1"),
-			).rejects.toThrow("not paused");
+			await expect(session.setVariable("x", "1")).rejects.toThrow("not paused");
 		} finally {
 			await session.stop();
 		}
@@ -129,10 +122,7 @@ describe("Mutation: hotpatch", () => {
 
 			// Build modified source: change the increment function to add 10 instead of 1
 			const originalText = source.lines.map((l) => l.text).join("\n");
-			const modifiedSource = originalText.replace(
-				"counter++",
-				"counter += 10",
-			);
+			const modifiedSource = originalText.replace("counter++", "counter += 10");
 
 			// Apply hotpatch
 			const result = await session.hotpatch("mutation-app.js", modifiedSource);
@@ -157,10 +147,7 @@ describe("Mutation: hotpatch", () => {
 			const originalText = source.lines.map((l) => l.text).join("\n");
 
 			// Build modified source
-			const modifiedSource = originalText.replace(
-				"counter++",
-				"counter += 100",
-			);
+			const modifiedSource = originalText.replace("counter++", "counter += 100");
 
 			// Apply hotpatch with dryRun
 			const result = await session.hotpatch("mutation-app.js", modifiedSource, {
@@ -181,9 +168,9 @@ describe("Mutation: hotpatch", () => {
 	test("hotpatch throws for unknown file", async () => {
 		const session = await launchAndPauseAtDebugger("test-hotpatch-unknown");
 		try {
-			await expect(
-				session.hotpatch("nonexistent-file.js", "// new source"),
-			).rejects.toThrow("No loaded script");
+			await expect(session.hotpatch("nonexistent-file.js", "// new source")).rejects.toThrow(
+				"No loaded script",
+			);
 		} finally {
 			await session.stop();
 		}

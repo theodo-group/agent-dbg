@@ -13,9 +13,7 @@ registerCommand("step", async (args) => {
 
 	// The subcommand is the step mode: over, into, or out (default: over)
 	const validModes = new Set(["over", "into", "out"]);
-	const mode = args.subcommand && validModes.has(args.subcommand)
-		? args.subcommand
-		: "over";
+	const mode = args.subcommand && validModes.has(args.subcommand) ? args.subcommand : "over";
 
 	const client = new DaemonClient(session);
 	const response = await client.request("step", { mode });

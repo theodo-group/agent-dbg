@@ -1,7 +1,7 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
-import { formatStack } from "../formatter/stack.ts";
 import type { StackFrame } from "../formatter/stack.ts";
+import { formatStack } from "../formatter/stack.ts";
 
 registerCommand("stack", async (args) => {
 	const session = args.global.session;
