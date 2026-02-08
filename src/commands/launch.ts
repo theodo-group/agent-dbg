@@ -1,0 +1,75 @@
+import { registerCommand } from "../cli/registry.ts";
+import { DaemonClient } from "../daemon/client.ts";
+import { spawnDaemon } from "../daemon/spawn.ts";
+
+registerCommand("launch", async (args) => {
+	const session = args.global.session;
+	const brk = args.flags.brk === true;
+	const port =
+		typeof args.flags.port === "string"
+			? parseInt(args.flags.port, 10)
+			: undefined;
+	const timeout =
+		typeof args.flags.timeout === "string"
+			? parseInt(args.flags.timeout, 10)
+			: undefined;
+
+	// Reconstruct the full command from subcommand + positionals.
+	// The parser treats the second non-flag word as subcommand, but for launch
+	// it should be part of the command to execute.
+	// e.g., "ndbg launch node app.js" -> subcommand="node", positionals=["app.js"]
+	// We need command = ["node", "app.js"]
+	const command = args.subcommand
+		? [args.subcommand, ...args.positionals]
+		: [...args.positionals];
+
+	if (command.length === 0) {
+		console.error("No command specified");
+		console.error("  -> Try: ndbg launch --brk node app.js");
+		return 1;
+	}
+
+	// Check if daemon already running for this session
+	if (DaemonClient.isRunning(session)) {
+		console.error(`Session "${session}" is already active`);
+		console.error("  -> Try: ndbg stop --session " + session);
+		return 1;
+	}
+
+	// Spawn daemon
+	await spawnDaemon(session, { timeout });
+
+	// Send launch command to daemon
+	const client = new DaemonClient(session);
+	const response = await client.request("launch", { command, brk, port });
+
+	if (!response.ok) {
+		console.error(`${response.error}`);
+		if (response.suggestion) console.error(`  ${response.suggestion}`);
+		return 1;
+	}
+
+	// Format output
+	const data = response.data as {
+		pid: number;
+		wsUrl: string;
+		paused: boolean;
+		pauseInfo?: { reason: string; url?: string; line?: number };
+	};
+
+	if (args.global.json) {
+		console.log(JSON.stringify(data, null, 2));
+	} else {
+		console.log(`Session "${session}" started (pid ${data.pid})`);
+		if (data.paused && data.pauseInfo) {
+			const loc = data.pauseInfo.url
+				? `${data.pauseInfo.url}:${data.pauseInfo.line}`
+				: "unknown";
+			console.log(`Paused at ${loc}`);
+		} else {
+			console.log("Running");
+		}
+	}
+
+	return 0;
+});

@@ -1,0 +1,29 @@
+{
+  "name": "ndbg",
+  "version": "0.1.0",
+  "description": "Node.js Debugger CLI for AI Agents",
+  "type": "module",
+  "bin": {
+    "ndbg": "./dist/ndbg"
+  },
+  "scripts": {
+    "dev": "bun run src/main.ts",
+    "build": "bun build src/main.ts --compile --outfile dist/ndbg",
+    "test": "bun test",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.14",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@jridgewell/trace-mapping": "^0.3.31"
+  },
+  "module": "index.ts",
+  "private": true
+}
