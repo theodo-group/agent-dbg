@@ -1,6 +1,13 @@
+import type { ProtocolMapping } from "devtools-protocol/types/protocol-mapping.js";
 import type { CdpEvent, CdpRequest, CdpResponse } from "./types.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+
+type CdpCommand = keyof ProtocolMapping.Commands;
+type CdpEventName = keyof ProtocolMapping.Events;
+
+// biome-ignore lint/suspicious/noExplicitAny: Required for handler map that stores both typed and untyped handlers
+type AnyHandler = (...args: any[]) => void;
 
 interface PendingRequest {
 	resolve: (result: unknown) => void;
@@ -12,7 +19,7 @@ export class CdpClient {
 	private ws: WebSocket;
 	private nextId = 1;
 	private pending = new Map<number, PendingRequest>();
-	private listeners = new Map<string, Set<(params: unknown) => void>>();
+	private listeners = new Map<string, Set<AnyHandler>>();
 	private isConnected = false;
 
 	private constructor(ws: WebSocket) {
@@ -42,11 +49,17 @@ export class CdpClient {
 		});
 	}
 
-	async send(method: string, params?: Record<string, unknown>): Promise<unknown> {
+	async send<T extends CdpCommand>(
+		method: T,
+		...params: ProtocolMapping.Commands[T]["paramsType"]
+	): Promise<ProtocolMapping.Commands[T]["returnType"]>;
+	async send(method: string, params?: Record<string, unknown>): Promise<unknown>;
+	async send(method: string, ...args: unknown[]): Promise<unknown> {
 		if (!this.isConnected) {
 			throw new Error("CDP client is not connected");
 		}
 
+		const params = args[0] as Record<string, unknown> | undefined;
 		const id = this.nextId++;
 		const request: CdpRequest = { id, method };
 		if (params !== undefined) {
@@ -64,7 +77,9 @@ export class CdpClient {
 		});
 	}
 
-	on(event: string, handler: (params: unknown) => void): void {
+	on<T extends CdpEventName>(event: T, handler: (...args: ProtocolMapping.Events[T]) => void): void;
+	on(event: string, handler: (params: unknown) => void): void;
+	on(event: string, handler: AnyHandler): void {
 		let handlers = this.listeners.get(event);
 		if (!handlers) {
 			handlers = new Set();
@@ -73,7 +88,12 @@ export class CdpClient {
 		handlers.add(handler);
 	}
 
-	off(event: string, handler: (params: unknown) => void): void {
+	off<T extends CdpEventName>(
+		event: T,
+		handler: (...args: ProtocolMapping.Events[T]) => void,
+	): void;
+	off(event: string, handler: (params: unknown) => void): void;
+	off(event: string, handler: AnyHandler): void {
 		const handlers = this.listeners.get(event);
 		if (handlers) {
 			handlers.delete(handler);
