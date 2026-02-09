@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "bun",
+            "request": "launch",
+            "name": "Debug Daemon",
+            "program": "src/main.ts",
+            "cwd": "${workspaceFolder}",
+            "stopOnEntry": false,
+            "watchMode": false,
+            "internalConsoleOptions": "neverOpen",
+            "args": [
+                "--daemon",
+                "default",
+            ]
+        },
+    ]
+}
