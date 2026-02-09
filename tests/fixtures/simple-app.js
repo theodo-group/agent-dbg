@@ -1,4 +1,4 @@
-// Simple test fixture for ndbg integration tests
+// Simple test fixture for agent-dbg integration tests
 // Launch with: node --inspect-brk tests/fixtures/simple-app.js
 
 function greet(name) {

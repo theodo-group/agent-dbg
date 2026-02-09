@@ -1,8 +1,8 @@
-# ndbg — Node.js Debugger CLI for AI Agents
+# agent-dbg — Node.js Debugger CLI for AI Agents
 
 ## Project Overview
 CLI debugger for Node.js built with Bun, optimized for AI agent consumption.
-See `ndbg-spec.md` for full specification, `PROGRESS.md` for implementation status.
+See `agent-dbg-spec.md` for full specification, `PROGRESS.md` for implementation status.
 
 ## Tech Stack
 - **Runtime**: Bun (compiled to standalone binary via `bun build --compile`)

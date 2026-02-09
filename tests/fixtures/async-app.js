@@ -1,4 +1,4 @@
-// Test fixture with async patterns for ndbg integration tests
+// Test fixture with async patterns for agent-dbg integration tests
 // Launch with: node --inspect-brk tests/fixtures/async-app.js
 
 async function delay(ms) {

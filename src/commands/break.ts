@@ -6,7 +6,7 @@ registerCommand("break", async (args) => {
 
 	if (!DaemonClient.isRunning(session)) {
 		console.error(`No active session "${session}"`);
-		console.error("  -> Try: ndbg launch --brk node app.js");
+		console.error("  -> Try: agent-dbg launch --brk node app.js");
 		return 1;
 	}
 
@@ -21,7 +21,7 @@ registerCommand("break", async (args) => {
 		const lastColon = patternFlag.lastIndexOf(":");
 		if (lastColon === -1 || lastColon === 0) {
 			console.error(`Invalid --pattern target: "${patternFlag}"`);
-			console.error("  -> Try: ndbg break --pattern 'app\\.js':42");
+			console.error("  -> Try: agent-dbg break --pattern 'app\\.js':42");
 			return 1;
 		}
 		file = patternFlag.slice(0, lastColon);
@@ -34,7 +34,7 @@ registerCommand("break", async (args) => {
 		const target = args.subcommand;
 		if (!target) {
 			console.error("No target specified");
-			console.error("  -> Try: ndbg break src/app.ts:42");
+			console.error("  -> Try: agent-dbg break src/app.ts:42");
 			return 1;
 		}
 
@@ -42,7 +42,7 @@ registerCommand("break", async (args) => {
 		const lastColon = target.lastIndexOf(":");
 		if (lastColon === -1 || lastColon === 0) {
 			console.error(`Invalid breakpoint target: "${target}"`);
-			console.error("  -> Try: ndbg break src/app.ts:42");
+			console.error("  -> Try: agent-dbg break src/app.ts:42");
 			return 1;
 		}
 
@@ -50,7 +50,7 @@ registerCommand("break", async (args) => {
 		line = parseInt(target.slice(lastColon + 1), 10);
 		if (Number.isNaN(line) || line <= 0) {
 			console.error(`Invalid line number in "${target}"`);
-			console.error("  -> Try: ndbg break src/app.ts:42");
+			console.error("  -> Try: agent-dbg break src/app.ts:42");
 			return 1;
 		}
 	}

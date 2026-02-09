@@ -653,7 +653,7 @@ export class DebugSession {
 
 	buildBreakpointCondition(condition?: string, hitCount?: number): string | undefined {
 		if (hitCount && hitCount > 0) {
-			const countVar = `__ndbg_bp_count_${Date.now()}`;
+			const countVar = `__adbg_bp_count_${Date.now()}`;
 			const hitExpr = `(typeof ${countVar} === "undefined" ? (${countVar} = 1) : ++${countVar}) >= ${hitCount}`;
 			if (condition) {
 				return `(${hitExpr}) && (${condition})`;

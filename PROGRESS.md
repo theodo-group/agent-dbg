@@ -1,4 +1,4 @@
-# ndbg Development Progress
+# agent-dbg Development Progress
 
 > Status legend: `[ ]` Not started | `[~]` In progress | `[x]` Done | `[-]` Blocked
 
@@ -20,12 +20,12 @@
 ### 1.1 Daemon Architecture
 
 - [x] Daemon process spawning and backgrounding
-- [x] Unix socket server (listen on `$XDG_RUNTIME_DIR/ndbg/<session>.sock`)
+- [x] Unix socket server (listen on `$XDG_RUNTIME_DIR/agent-dbg/<session>.sock`)
 - [x] CLI-to-daemon request/response protocol (newline-delimited JSON)
 - [x] Daemon auto-termination on process exit
 - [x] Daemon idle timeout (configurable, default 300s)
 - [x] Lock file to prevent duplicate daemons per session
-- [x] Crash recovery: detect dead socket, suggest `ndbg attach`
+- [x] Crash recovery: detect dead socket, suggest `agent-dbg attach`
 
 ### 1.2 CDP (Chrome DevTools Protocol) Connection
 
@@ -45,7 +45,7 @@
 - [x] `LP#` refs — logpoint refs (persist until removed)
 - [x] `HS#` refs — heap snapshot refs (persist until session ends)
 - [x] Ref resolution: resolve `@ref` in CLI arguments to V8 IDs
-- [x] `ndbg gc-refs` — clear accumulated `@o` refs
+- [x] `agent-dbg gc-refs` — clear accumulated `@o` refs
 
 ### 1.4 Output Formatter
 
@@ -56,28 +56,28 @@
 - [x] Error output with actionable suggestions (`→ Try: ...`)
 - [x] `--color` flag for ANSI terminal colors
 - [x] `--json` flag for JSON output mode
-- [x] Truncation hints (`... (ndbg props @oN for more)`)
+- [x] Truncation hints (`... (agent-dbg props @oN for more)`)
 
 ---
 
 ## Phase 2 — Session Management
 
-- [x] `ndbg launch [--brk] [--session NAME] <command...>` — spawn + attach
-- [x] `ndbg launch --brk` — spawn with `--inspect-brk`, pause on first line
-- [x] `ndbg launch --port PORT` — use specific inspector port
-- [x] `ndbg launch --timeout SECS` — configure daemon idle timeout
-- [x] `ndbg attach <pid | ws-url | port>` — attach to running process
-- [x] `ndbg stop [--session NAME]` — kill process + daemon
-- [x] `ndbg sessions` — list active sessions (PID, status, name)
-- [x] `ndbg sessions --cleanup` — kill orphaned daemons
-- [x] `ndbg status` — session info (PID, pause state, breakpoints, memory, uptime)
+- [x] `agent-dbg launch [--brk] [--session NAME] <command...>` — spawn + attach
+- [x] `agent-dbg launch --brk` — spawn with `--inspect-brk`, pause on first line
+- [x] `agent-dbg launch --port PORT` — use specific inspector port
+- [x] `agent-dbg launch --timeout SECS` — configure daemon idle timeout
+- [x] `agent-dbg attach <pid | ws-url | port>` — attach to running process
+- [x] `agent-dbg stop [--session NAME]` — kill process + daemon
+- [x] `agent-dbg sessions` — list active sessions (PID, status, name)
+- [x] `agent-dbg sessions --cleanup` — kill orphaned daemons
+- [x] `agent-dbg status` — session info (PID, pause state, breakpoints, memory, uptime)
 - [x] Multi-session support (`--session NAME` on any command)
 
 ---
 
 ## Phase 3 — State Snapshot
 
-- [x] `ndbg state` — full state snapshot (source + locals + stack + breakpoints)
+- [x] `agent-dbg state` — full state snapshot (source + locals + stack + breakpoints)
 - [x] State filtering: `-v` / `--vars` (locals only)
 - [x] State filtering: `-s` / `--stack` (stack trace only)
 - [x] State filtering: `-b` / `--breakpoints` (breakpoints/logpoints only)
@@ -94,80 +94,80 @@
 
 ## Phase 4 — Breakpoints
 
-- [x] `ndbg break <file>:<line>` — set breakpoint (`Debugger.setBreakpointByUrl`)
-- [x] `ndbg break --condition <expr>` — conditional breakpoint
-- [x] `ndbg break --hit-count <n>` — pause on Nth hit
-- [x] `ndbg break --continue` — set breakpoint + immediately continue
-- [ ] `ndbg break --log <template>` — shortcut to logpoint
-- [x] `ndbg break --pattern <urlRegex>:<line>` — regex pattern breakpoint
-- [ ] `ndbg break-fn <expr>` — breakpoint on function call
-- [ ] `ndbg break-on-load [--sourcemap]` — break on new script parse
-- [x] `ndbg break-rm <BP# | LP# | all>` — remove breakpoints
-- [x] `ndbg break-ls` — list all breakpoints/logpoints with locations and conditions
-- [x] `ndbg break-toggle [BP# | all]` — enable/disable breakpoints
-- [x] `ndbg breakable <file>:<start>-<end>` — list valid breakpoint locations
-- [x] `ndbg logpoint <file>:<line> <template>` — set logpoint (no pause)
+- [x] `agent-dbg break <file>:<line>` — set breakpoint (`Debugger.setBreakpointByUrl`)
+- [x] `agent-dbg break --condition <expr>` — conditional breakpoint
+- [x] `agent-dbg break --hit-count <n>` — pause on Nth hit
+- [x] `agent-dbg break --continue` — set breakpoint + immediately continue
+- [ ] `agent-dbg break --log <template>` — shortcut to logpoint
+- [x] `agent-dbg break --pattern <urlRegex>:<line>` — regex pattern breakpoint
+- [ ] `agent-dbg break-fn <expr>` — breakpoint on function call
+- [ ] `agent-dbg break-on-load [--sourcemap]` — break on new script parse
+- [x] `agent-dbg break-rm <BP# | LP# | all>` — remove breakpoints
+- [x] `agent-dbg break-ls` — list all breakpoints/logpoints with locations and conditions
+- [x] `agent-dbg break-toggle [BP# | all]` — enable/disable breakpoints
+- [x] `agent-dbg breakable <file>:<start>-<end>` — list valid breakpoint locations
+- [x] `agent-dbg logpoint <file>:<line> <template>` — set logpoint (no pause)
 - [ ] Logpoint `--max <n>` — auto-pause after N emissions (default: 100)
 - [x] Logpoint `--condition <expr>` — conditional logpoint
-- [x] `ndbg catch [all | uncaught | caught | none]` — pause-on-exception config
+- [x] `agent-dbg catch [all | uncaught | caught | none]` — pause-on-exception config
 
 ---
 
 ## Phase 5 — Execution Control
 
-- [x] `ndbg continue` — resume execution (+ auto-state return)
-- [x] `ndbg step over` — step one statement over (default)
-- [x] `ndbg step into` — step into function call
-- [x] `ndbg step out` — step out of current function
-- [ ] `ndbg step into --break-on-async` — pause on first async task
-- [ ] `ndbg step --skip <pattern>` — inline blackboxing during step
-- [x] `ndbg run-to <file>:<line>` — continue to location (no persistent breakpoint)
-- [x] `ndbg restart-frame [@fN]` — re-execute frame from beginning
-- [x] `ndbg pause` — interrupt running process
-- [ ] `ndbg kill-execution` — terminate JS execution, keep session alive
+- [x] `agent-dbg continue` — resume execution (+ auto-state return)
+- [x] `agent-dbg step over` — step one statement over (default)
+- [x] `agent-dbg step into` — step into function call
+- [x] `agent-dbg step out` — step out of current function
+- [ ] `agent-dbg step into --break-on-async` — pause on first async task
+- [ ] `agent-dbg step --skip <pattern>` — inline blackboxing during step
+- [x] `agent-dbg run-to <file>:<line>` — continue to location (no persistent breakpoint)
+- [x] `agent-dbg restart-frame [@fN]` — re-execute frame from beginning
+- [x] `agent-dbg pause` — interrupt running process
+- [ ] `agent-dbg kill-execution` — terminate JS execution, keep session alive
 
 ---
 
 ## Phase 6 — Inspection
 
-- [x] `ndbg vars [name1, name2, ...]` — show local variables with `@v` refs
-- [x] `ndbg stack [--async-depth N]` — show call stack with `@f` refs
-- [x] `ndbg eval <expression>` — evaluate in current frame context
-- [x] `ndbg eval` with `await` support (CDP `awaitPromise`)
-- [x] `ndbg eval` with `@ref` interpolation
-- [x] `ndbg eval --frame @fN` — evaluate in specific frame
-- [x] `ndbg eval --silent` — suppress exception reporting
-- [x] `ndbg eval --timeout MS` — kill after N ms (default: 5000)
-- [x] `ndbg eval --side-effect-free` — throw on side effects
-- [x] `ndbg props <@ref>` — expand object properties (returns `@o` refs)
-- [x] `ndbg props --own` — only own properties
-- [x] `ndbg props --depth N` — recursive expansion
-- [x] `ndbg props --private` — include private fields
-- [x] `ndbg props --internal` — V8 internal properties (`[[PromiseState]]`)
-- [ ] `ndbg instances <expression>` — find all live instances of prototype
-- [ ] `ndbg globals` — list global let/const/class declarations
-- [x] `ndbg source [--lines N] [--file <path>] [--all]` — show source code
-- [x] `ndbg search <query> [--regex] [--case-sensitive] [--file <id>]` — search scripts
-- [x] `ndbg scripts [--filter <pattern>]` — list loaded scripts
-- [x] `ndbg console [--follow] [--since N] [--level] [--clear]` — console output
-- [x] `ndbg exceptions [--follow] [--since N]` — captured exceptions
+- [x] `agent-dbg vars [name1, name2, ...]` — show local variables with `@v` refs
+- [x] `agent-dbg stack [--async-depth N]` — show call stack with `@f` refs
+- [x] `agent-dbg eval <expression>` — evaluate in current frame context
+- [x] `agent-dbg eval` with `await` support (CDP `awaitPromise`)
+- [x] `agent-dbg eval` with `@ref` interpolation
+- [x] `agent-dbg eval --frame @fN` — evaluate in specific frame
+- [x] `agent-dbg eval --silent` — suppress exception reporting
+- [x] `agent-dbg eval --timeout MS` — kill after N ms (default: 5000)
+- [x] `agent-dbg eval --side-effect-free` — throw on side effects
+- [x] `agent-dbg props <@ref>` — expand object properties (returns `@o` refs)
+- [x] `agent-dbg props --own` — only own properties
+- [x] `agent-dbg props --depth N` — recursive expansion
+- [x] `agent-dbg props --private` — include private fields
+- [x] `agent-dbg props --internal` — V8 internal properties (`[[PromiseState]]`)
+- [ ] `agent-dbg instances <expression>` — find all live instances of prototype
+- [ ] `agent-dbg globals` — list global let/const/class declarations
+- [x] `agent-dbg source [--lines N] [--file <path>] [--all]` — show source code
+- [x] `agent-dbg search <query> [--regex] [--case-sensitive] [--file <id>]` — search scripts
+- [x] `agent-dbg scripts [--filter <pattern>]` — list loaded scripts
+- [x] `agent-dbg console [--follow] [--since N] [--level] [--clear]` — console output
+- [x] `agent-dbg exceptions [--follow] [--since N]` — captured exceptions
 
 ---
 
 ## Phase 7 — Mutation
 
-- [x] `ndbg set <@vRef | varName> <value>` — change variable value
-- [x] `ndbg set-return <value>` — change return value (at return point)
-- [x] `ndbg hotpatch <file>` — live-edit script source (`Debugger.setScriptSource`)
-- [x] `ndbg hotpatch --dry-run` — check without applying
+- [x] `agent-dbg set <@vRef | varName> <value>` — change variable value
+- [x] `agent-dbg set-return <value>` — change return value (at return point)
+- [x] `agent-dbg hotpatch <file>` — live-edit script source (`Debugger.setScriptSource`)
+- [x] `agent-dbg hotpatch --dry-run` — check without applying
 
 ---
 
 ## Phase 8 — Blackboxing
 
-- [x] `ndbg blackbox <pattern...>` — skip stepping into matching scripts
-- [x] `ndbg blackbox-ls` — list current patterns
-- [x] `ndbg blackbox-rm <pattern | all>` — remove patterns
+- [x] `agent-dbg blackbox <pattern...>` — skip stepping into matching scripts
+- [x] `agent-dbg blackbox-ls` — list current patterns
+- [x] `agent-dbg blackbox-rm <pattern | all>` — remove patterns
 
 ---
 
@@ -176,54 +176,54 @@
 - [x] Fetch and cache source maps from `Debugger.scriptParsed` events
 - [x] Resolve `.ts` locations to `.js` for breakpoint setting
 - [x] Display source-mapped paths in all output (stack traces, source, breakpoints)
-- [x] Show original source (TypeScript) in `ndbg source`
+- [x] Show original source (TypeScript) in `agent-dbg source`
 - [x] Graceful fallback when no source map exists
-- [x] `ndbg sourcemap <file>` — show source map info
-- [x] `ndbg sourcemap --disable` — disable resolution globally
+- [x] `agent-dbg sourcemap <file>` — show source map info
+- [x] `agent-dbg sourcemap --disable` — disable resolution globally
 - [x] `--generated` flag — bypass source map resolution per-command (state, source, stack)
 
 ---
 
 ## Phase 10 — CPU Profiling
 
-- [ ] `ndbg cpu start [--interval <us>]` — start V8 CPU profiler
-- [ ] `ndbg cpu stop [--top N]` — stop profiling + report (function, file:line, self%, total%, deopt)
+- [ ] `agent-dbg cpu start [--interval <us>]` — start V8 CPU profiler
+- [ ] `agent-dbg cpu stop [--top N]` — stop profiling + report (function, file:line, self%, total%, deopt)
 - [ ] Save full profile to file for external tools
-- [ ] `ndbg coverage start [--detailed]` — start code coverage
-- [ ] `ndbg coverage stop [--file] [--uncovered]` — stop + report
+- [ ] `agent-dbg coverage start [--detailed]` — start code coverage
+- [ ] `agent-dbg coverage stop [--file] [--uncovered]` — stop + report
 
 ---
 
 ## Phase 11 — Memory / Heap
 
-- [ ] `ndbg heap usage` — quick heap statistics
-- [ ] `ndbg heap snapshot [--tag <name>]` — full heap snapshot (assigns `HS#` ref)
-- [ ] `ndbg heap diff <HS#a> <HS#b> [--top N]` — compare snapshots
-- [ ] `ndbg heap sample start [--interval] [--include-gc]` — sampling profiler
-- [ ] `ndbg heap sample stop [--top N]` — stop sampling + report
-- [ ] `ndbg heap track start` — allocation tracking (timeline)
-- [ ] `ndbg heap track stop` — stop tracking + report
-- [ ] `ndbg heap inspect <heapObjectId>` — get runtime ref from snapshot node
-- [ ] `ndbg gc` — force garbage collection
+- [ ] `agent-dbg heap usage` — quick heap statistics
+- [ ] `agent-dbg heap snapshot [--tag <name>]` — full heap snapshot (assigns `HS#` ref)
+- [ ] `agent-dbg heap diff <HS#a> <HS#b> [--top N]` — compare snapshots
+- [ ] `agent-dbg heap sample start [--interval] [--include-gc]` — sampling profiler
+- [ ] `agent-dbg heap sample stop [--top N]` — stop sampling + report
+- [ ] `agent-dbg heap track start` — allocation tracking (timeline)
+- [ ] `agent-dbg heap track stop` — stop tracking + report
+- [ ] `agent-dbg heap inspect <heapObjectId>` — get runtime ref from snapshot node
+- [ ] `agent-dbg gc` — force garbage collection
 
 ---
 
 ## Phase 12 — Advanced / Utility
 
-- [ ] `ndbg inject-hook <name>` — create runtime binding (`__ndbg_<name>()`)
-- [ ] `ndbg hooks [--follow]` — view hook invocations
-- [ ] `ndbg contexts` — list V8 execution contexts
-- [ ] `ndbg async-depth <N>` — set async call stack depth
-- [ ] `ndbg config [key] [value]` — get/set daemon configuration
-- [ ] `ndbg gc-refs` — clear `@o` refs to free memory
-- [ ] `ndbg --help-agent` — compact LLM-optimized reference card
+- [ ] `agent-dbg inject-hook <name>` — create runtime binding (`__agent-dbg_<name>()`)
+- [ ] `agent-dbg hooks [--follow]` — view hook invocations
+- [ ] `agent-dbg contexts` — list V8 execution contexts
+- [ ] `agent-dbg async-depth <N>` — set async call stack depth
+- [ ] `agent-dbg config [key] [value]` — get/set daemon configuration
+- [ ] `agent-dbg gc-refs` — clear `@o` refs to free memory
+- [ ] `agent-dbg --help-agent` — compact LLM-optimized reference card
 
 ---
 
 ## Phase 13 — Distribution & Integration
 
 - [ ] `bun build --compile` producing standalone binaries (linux-x64, darwin-arm64, etc.)
-- [ ] npm package (`npx ndbg` support)
+- [ ] npm package (`npx agent-dbg` support)
 - [ ] SKILL.md for Claude Code agent integration
 - [ ] `--help-agent` output matching spec reference card
 - [ ] GitHub releases with prebuilt binaries

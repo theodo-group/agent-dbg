@@ -1,4 +1,4 @@
-// Test fixture with errors for ndbg integration tests
+// Test fixture with errors for agent-dbg integration tests
 // Launch with: node --inspect-brk tests/fixtures/error-app.js
 
 function riskyOperation(input) {

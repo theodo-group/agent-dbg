@@ -6,7 +6,7 @@ registerCommand("search", async (args) => {
 
 	if (!DaemonClient.isRunning(session)) {
 		console.error(`No active session "${session}"`);
-		console.error("  -> Try: ndbg launch --brk node app.js");
+		console.error("  -> Try: agent-dbg launch --brk node app.js");
 		return 1;
 	}
 
@@ -22,7 +22,7 @@ registerCommand("search", async (args) => {
 
 	if (!query) {
 		console.error("No search query specified");
-		console.error("  -> Try: ndbg search <query> [--regex] [--case-sensitive]");
+		console.error("  -> Try: agent-dbg search <query> [--regex] [--case-sensitive]");
 		return 1;
 	}
 

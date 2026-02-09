@@ -141,7 +141,7 @@ export async function run(args: ParsedArgs): Promise<number> {
 	const handler = registry.get(args.command);
 	if (!handler) {
 		console.error(`✗ Unknown command: ${args.command}`);
-		console.error("  → Try: ndbg --help");
+		console.error("  → Try: agent-dbg --help");
 		return 1;
 	}
 
@@ -155,9 +155,9 @@ export async function run(args: ParsedArgs): Promise<number> {
 }
 
 function printHelp(): void {
-	console.log(`ndbg — Node.js debugger CLI for AI agents
+	console.log(`agent-dbg — Node.js debugger CLI for AI agents
 
-Usage: ndbg <command> [options]
+Usage: agent-dbg <command> [options]
 
 Session:
   launch [--brk] <command...>      Start + attach debugger
@@ -227,61 +227,61 @@ Global flags:
 }
 
 function printHelpAgent(): void {
-	console.log(`ndbg — Node.js debugger CLI for AI agents
+	console.log(`agent-dbg — Node.js debugger CLI for AI agents
 
 CORE LOOP:
-  1. ndbg launch --brk "node app.js"    → pauses at first line, returns state
-  2. ndbg break src/file.ts:42          → set breakpoint
-  3. ndbg continue                      → run to breakpoint, returns state
-  4. Inspect: ndbg vars, ndbg eval, ndbg props @v1
-  5. Mutate/fix: ndbg set @v1 value, ndbg hotpatch src/file.ts
+  1. agent-dbg launch --brk "node app.js"    → pauses at first line, returns state
+  2. agent-dbg break src/file.ts:42          → set breakpoint
+  3. agent-dbg continue                      → run to breakpoint, returns state
+  4. Inspect: agent-dbg vars, agent-dbg eval, agent-dbg props @v1
+  5. Mutate/fix: agent-dbg set @v1 value, agent-dbg hotpatch src/file.ts
   6. Repeat from 3
 
 REFS: Every output assigns @refs. Use them everywhere:
-  @v1..@vN  variables    |  ndbg props @v1, ndbg set @v2 true
-  @f0..@fN  stack frames |  ndbg eval --frame @f1
-  BP#1..N   breakpoints  |  ndbg break-rm BP#1, ndbg break-toggle BP#1
+  @v1..@vN  variables    |  agent-dbg props @v1, agent-dbg set @v2 true
+  @f0..@fN  stack frames |  agent-dbg eval --frame @f1
+  BP#1..N   breakpoints  |  agent-dbg break-rm BP#1, agent-dbg break-toggle BP#1
 
 EXECUTION (all return state automatically):
-  ndbg continue              Resume to next breakpoint
-  ndbg step [over|into|out]  Step one statement
-  ndbg run-to file:line      Continue to location
-  ndbg pause                 Interrupt running process
-  ndbg restart-frame [@fN]   Re-run frame from beginning
+  agent-dbg continue              Resume to next breakpoint
+  agent-dbg step [over|into|out]  Step one statement
+  agent-dbg run-to file:line      Continue to location
+  agent-dbg pause                 Interrupt running process
+  agent-dbg restart-frame [@fN]   Re-run frame from beginning
 
 BREAKPOINTS:
-  ndbg break file:line [--condition expr] [--hit-count N] [--continue]
-  ndbg break --pattern "regex":line
-  ndbg break-rm <BP#|all>    Remove breakpoints
-  ndbg break-ls              List breakpoints
-  ndbg break-toggle <BP#|all>  Enable/disable breakpoints
-  ndbg breakable file:start-end  Valid breakpoint locations
-  ndbg logpoint file:line "template \${var}" [--condition expr]
-  ndbg catch [all|uncaught|caught|none]
+  agent-dbg break file:line [--condition expr] [--hit-count N] [--continue]
+  agent-dbg break --pattern "regex":line
+  agent-dbg break-rm <BP#|all>    Remove breakpoints
+  agent-dbg break-ls              List breakpoints
+  agent-dbg break-toggle <BP#|all>  Enable/disable breakpoints
+  agent-dbg breakable file:start-end  Valid breakpoint locations
+  agent-dbg logpoint file:line "template \${var}" [--condition expr]
+  agent-dbg catch [all|uncaught|caught|none]
 
 INSPECTION:
-  ndbg state [-v|-s|-b|-c] [--depth N] [--lines N] [--frame @fN] [--all-scopes] [--compact] [--generated]
-  ndbg vars [name...] [--frame @fN] [--all-scopes]
-  ndbg stack [--async-depth N] [--generated]
-  ndbg eval <expr> [--frame @fN] [--silent] [--timeout MS] [--side-effect-free]
-  ndbg props @ref [--own] [--depth N] [--private] [--internal]
-  ndbg source [--lines N] [--file path] [--all] [--generated]
-  ndbg search "query" [--regex] [--case-sensitive] [--file id]
-  ndbg scripts [--filter pattern]
-  ndbg console [--since N] [--level type] [--clear]
-  ndbg exceptions [--since N]
+  agent-dbg state [-v|-s|-b|-c] [--depth N] [--lines N] [--frame @fN] [--all-scopes] [--compact] [--generated]
+  agent-dbg vars [name...] [--frame @fN] [--all-scopes]
+  agent-dbg stack [--async-depth N] [--generated]
+  agent-dbg eval <expr> [--frame @fN] [--silent] [--timeout MS] [--side-effect-free]
+  agent-dbg props @ref [--own] [--depth N] [--private] [--internal]
+  agent-dbg source [--lines N] [--file path] [--all] [--generated]
+  agent-dbg search "query" [--regex] [--case-sensitive] [--file id]
+  agent-dbg scripts [--filter pattern]
+  agent-dbg console [--since N] [--level type] [--clear]
+  agent-dbg exceptions [--since N]
 
 MUTATION:
-  ndbg set <@ref|name> <value>   Change variable
-  ndbg set-return <value>        Change return value (at return point)
-  ndbg hotpatch <file> [--dry-run]  Live-edit code (no restart!)
+  agent-dbg set <@ref|name> <value>   Change variable
+  agent-dbg set-return <value>        Change return value (at return point)
+  agent-dbg hotpatch <file> [--dry-run]  Live-edit code (no restart!)
 
 BLACKBOXING:
-  ndbg blackbox <pattern...>     Skip stepping into matching scripts
-  ndbg blackbox-ls               List current patterns
-  ndbg blackbox-rm <pattern|all> Remove patterns
+  agent-dbg blackbox <pattern...>     Skip stepping into matching scripts
+  agent-dbg blackbox-ls               List current patterns
+  agent-dbg blackbox-rm <pattern|all> Remove patterns
 
 SOURCE MAPS:
-  ndbg sourcemap [file]          Show source map info
-  ndbg sourcemap --disable       Disable resolution globally`);
+  agent-dbg sourcemap [file]          Show source map info
+  agent-dbg sourcemap --disable       Disable resolution globally`);
 }

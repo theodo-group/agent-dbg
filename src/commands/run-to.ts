@@ -7,16 +7,16 @@ registerCommand("run-to", async (args) => {
 
 	if (!DaemonClient.isRunning(session)) {
 		console.error(`No active session "${session}"`);
-		console.error("  -> Try: ndbg launch --brk node app.js");
+		console.error("  -> Try: agent-dbg launch --brk node app.js");
 		return 1;
 	}
 
 	// Parse file:line from subcommand
-	// e.g., "ndbg run-to src/file.ts:42" -> subcommand = "src/file.ts:42"
+	// e.g., "agent-dbg run-to src/file.ts:42" -> subcommand = "src/file.ts:42"
 	const target = args.subcommand ?? args.positionals[0];
 	if (!target) {
 		console.error("No target specified");
-		console.error("  -> Try: ndbg run-to src/file.ts:42");
+		console.error("  -> Try: agent-dbg run-to src/file.ts:42");
 		return 1;
 	}
 

@@ -6,7 +6,7 @@ registerCommand("eval", async (args) => {
 
 	if (!DaemonClient.isRunning(session)) {
 		console.error(`No active session "${session}"`);
-		console.error("  -> Try: ndbg launch --brk node app.js");
+		console.error("  -> Try: agent-dbg launch --brk node app.js");
 		return 1;
 	}
 
@@ -20,7 +20,7 @@ registerCommand("eval", async (args) => {
 
 	if (!expression) {
 		console.error("No expression specified");
-		console.error("  -> Try: ndbg eval 1 + 2");
+		console.error("  -> Try: agent-dbg eval 1 + 2");
 		return 1;
 	}
 

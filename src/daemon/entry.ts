@@ -6,7 +6,7 @@ import { DebugSession } from "./session.ts";
 const daemonIdx = process.argv.indexOf("--daemon");
 const session = daemonIdx !== -1 ? process.argv[daemonIdx + 1] : process.argv[2];
 if (!session) {
-	console.error("Usage: ndbg --daemon <session> [--timeout <seconds>]");
+	console.error("Usage: agent-dbg --daemon <session> [--timeout <seconds>]");
 	process.exit(1);
 }
 

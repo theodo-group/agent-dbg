@@ -12,20 +12,20 @@ registerCommand("launch", async (args) => {
 	// Reconstruct the full command from subcommand + positionals.
 	// The parser treats the second non-flag word as subcommand, but for launch
 	// it should be part of the command to execute.
-	// e.g., "ndbg launch node app.js" -> subcommand="node", positionals=["app.js"]
+	// e.g., "agent-dbg launch node app.js" -> subcommand="node", positionals=["app.js"]
 	// We need command = ["node", "app.js"]
 	const command = args.subcommand ? [args.subcommand, ...args.positionals] : [...args.positionals];
 
 	if (command.length === 0) {
 		console.error("No command specified");
-		console.error("  -> Try: ndbg launch --brk node app.js");
+		console.error("  -> Try: agent-dbg launch --brk node app.js");
 		return 1;
 	}
 
 	// Check if daemon already running for this session
 	if (DaemonClient.isRunning(session)) {
 		console.error(`Session "${session}" is already active`);
-		console.error(`  -> Try: ndbg stop --session ${session}`);
+		console.error(`  -> Try: agent-dbg stop --session ${session}`);
 		return 1;
 	}
 

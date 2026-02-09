@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 // When spawned as a daemon subprocess, run daemon entry directly
 if (process.argv.includes("--daemon")) {
 	await import("./daemon/entry.ts");

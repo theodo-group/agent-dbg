@@ -6,14 +6,14 @@ registerCommand("props", async (args) => {
 
 	if (!DaemonClient.isRunning(session)) {
 		console.error(`No active session "${session}"`);
-		console.error("  -> Try: ndbg launch --brk node app.js");
+		console.error("  -> Try: agent-dbg launch --brk node app.js");
 		return 1;
 	}
 
 	const ref = args.subcommand;
 	if (!ref) {
 		console.error("No ref specified");
-		console.error("  -> Try: ndbg props @v1");
+		console.error("  -> Try: agent-dbg props @v1");
 		return 1;
 	}
 

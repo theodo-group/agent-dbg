@@ -6,14 +6,14 @@ registerCommand("logpoint", async (args) => {
 
 	if (!DaemonClient.isRunning(session)) {
 		console.error(`No active session "${session}"`);
-		console.error("  -> Try: ndbg launch --brk node app.js");
+		console.error("  -> Try: agent-dbg launch --brk node app.js");
 		return 1;
 	}
 
 	const target = args.subcommand;
 	if (!target) {
 		console.error("No target specified");
-		console.error('  -> Try: ndbg logpoint src/app.ts:42 "x =", x');
+		console.error('  -> Try: agent-dbg logpoint src/app.ts:42 "x =", x');
 		return 1;
 	}
 
@@ -21,7 +21,7 @@ registerCommand("logpoint", async (args) => {
 	const lastColon = target.lastIndexOf(":");
 	if (lastColon === -1 || lastColon === 0) {
 		console.error(`Invalid logpoint target: "${target}"`);
-		console.error('  -> Try: ndbg logpoint src/app.ts:42 "x =", x');
+		console.error('  -> Try: agent-dbg logpoint src/app.ts:42 "x =", x');
 		return 1;
 	}
 
@@ -29,7 +29,7 @@ registerCommand("logpoint", async (args) => {
 	const line = parseInt(target.slice(lastColon + 1), 10);
 	if (Number.isNaN(line) || line <= 0) {
 		console.error(`Invalid line number in "${target}"`);
-		console.error('  -> Try: ndbg logpoint src/app.ts:42 "x =", x');
+		console.error('  -> Try: agent-dbg logpoint src/app.ts:42 "x =", x');
 		return 1;
 	}
 
@@ -37,7 +37,7 @@ registerCommand("logpoint", async (args) => {
 	const template = args.positionals[0];
 	if (!template) {
 		console.error("No log template specified");
-		console.error('  -> Try: ndbg logpoint src/app.ts:42 "x =", x');
+		console.error('  -> Try: agent-dbg logpoint src/app.ts:42 "x =", x');
 		return 1;
 	}
 

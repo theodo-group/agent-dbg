@@ -54,7 +54,7 @@ export async function evalExpression(
 		for (const ref of refMatches) {
 			const remoteId = session.refs.resolveId(ref);
 			if (remoteId) {
-				const argName = `__ndbg_ref_${ref.slice(1)}`;
+				const argName = `__adbg_ref_${ref.slice(1)}`;
 				resolvedExpression = resolvedExpression.replace(ref, argName);
 				refEntries.push({
 					ref,
