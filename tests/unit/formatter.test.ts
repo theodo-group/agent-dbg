@@ -656,7 +656,11 @@ describe("formatError", () => {
 	});
 
 	test("formats error without details but with suggestion", () => {
-		const result = formatError("No active session", undefined, "agent-dbg launch --brk node app.js");
+		const result = formatError(
+			"No active session",
+			undefined,
+			"agent-dbg launch --brk node app.js",
+		);
 		const lines = result.split("\n");
 		expect(lines).toHaveLength(2);
 		expect(lines[0]).toBe("\u2717 No active session");

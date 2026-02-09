@@ -1,10 +1,12 @@
 import type { Subprocess } from "bun";
 import type Protocol from "devtools-protocol/types/protocol.js";
 import { CdpClient } from "../cdp/client.ts";
+import { CdpLogger } from "../cdp/logger.ts";
 import type { RemoteObject } from "../formatter/values.ts";
 import { formatValue } from "../formatter/values.ts";
 import { RefTable } from "../refs/ref-table.ts";
 import { SourceMapResolver } from "../sourcemap/resolver.ts";
+import { ensureSocketDir, getLogPath } from "./paths.ts";
 import {
 	addBlackbox as addBlackboxImpl,
 	listBlackbox as listBlackboxImpl,
@@ -152,9 +154,14 @@ export class DebugSession {
 	blackboxPatterns: string[] = [];
 	disabledBreakpoints: Map<string, { breakpointId: string; meta: Record<string, unknown> }> =
 		new Map();
+	launchCommand: string[] | null = null;
+	launchOptions: { brk?: boolean; port?: number } | null = null;
+	cdpLogger: CdpLogger;
 
 	constructor(session: string) {
 		this.session = session;
+		ensureSocketDir();
+		this.cdpLogger = new CdpLogger(getLogPath(session));
 	}
 
 	// ── Session lifecycle ─────────────────────────────────────────────
@@ -170,6 +177,9 @@ export class DebugSession {
 		if (command.length === 0) {
 			throw new Error("Command array must not be empty");
 		}
+
+		this.launchCommand = command;
+		this.launchOptions = options;
 
 		const brk = options.brk ?? true;
 		const port = options.port ?? 0;
@@ -309,6 +319,16 @@ export class DebugSession {
 		this.exceptionEntries = [];
 		this.disabledBreakpoints.clear();
 		this.sourceMapResolver.clear();
+	}
+
+	async restart(): Promise<LaunchResult> {
+		if (!this.launchCommand) {
+			throw new Error("No previous launch to restart. Use 'launch' first.");
+		}
+		const command = this.launchCommand;
+		const options = this.launchOptions ?? {};
+		await this.stop();
+		return this.launch(command, options);
 	}
 
 	get sessionState(): "idle" | "running" | "paused" {
@@ -721,7 +741,7 @@ export class DebugSession {
 	}
 
 	private async connectCdp(wsUrl: string): Promise<void> {
-		const cdp = await CdpClient.connect(wsUrl);
+		const cdp = await CdpClient.connect(wsUrl, this.cdpLogger);
 		this.cdp = cdp;
 
 		// Set up event handlers before enabling domains so we don't miss any events

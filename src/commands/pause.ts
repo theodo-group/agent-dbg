@@ -1,6 +1,7 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
-import type { SessionStatus } from "../daemon/session.ts";
+import type { StateSnapshot } from "../daemon/session.ts";
+import { printState } from "./print-state.ts";
 
 registerCommand("pause", async (args) => {
 	const session = args.global.session;
@@ -20,27 +21,13 @@ registerCommand("pause", async (args) => {
 		return 1;
 	}
 
-	const data = response.data as SessionStatus;
+	const data = response.data as StateSnapshot;
 
 	if (args.global.json) {
 		console.log(JSON.stringify(data, null, 2));
 	} else {
-		printStatus(data);
+		printState(data);
 	}
 
 	return 0;
 });
-
-function printStatus(data: SessionStatus): void {
-	if (data.state === "paused" && data.pauseInfo) {
-		const col = data.pauseInfo.column !== undefined ? `:${data.pauseInfo.column + 1}` : "";
-		const loc = data.pauseInfo.url
-			? `${data.pauseInfo.url}:${(data.pauseInfo.line ?? 0) + 1}${col}`
-			: "unknown";
-		console.log(`Paused at ${loc} (${data.pauseInfo.reason})`);
-	} else if (data.state === "running") {
-		console.log("Running");
-	} else {
-		console.log(`${data.state}`);
-	}
-}

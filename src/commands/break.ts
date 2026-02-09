@@ -1,6 +1,37 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
 
+function parseFileLineColumn(
+	target: string,
+): { file: string; line: number; column?: number } | null {
+	// Match file:line:column or file:line
+	// Walk backwards to find the last two colon-separated numbers
+	const lastColon = target.lastIndexOf(":");
+	if (lastColon === -1 || lastColon === 0) return null;
+
+	const afterLast = target.slice(lastColon + 1);
+	const maybeNum = parseInt(afterLast, 10);
+	if (Number.isNaN(maybeNum) || maybeNum <= 0) return null;
+
+	const beforeLast = target.slice(0, lastColon);
+	const secondColon = beforeLast.lastIndexOf(":");
+	if (secondColon > 0) {
+		const afterSecond = beforeLast.slice(secondColon + 1);
+		const maybeLine = parseInt(afterSecond, 10);
+		if (!Number.isNaN(maybeLine) && maybeLine > 0) {
+			// file:line:column
+			return {
+				file: beforeLast.slice(0, secondColon),
+				line: maybeLine,
+				column: maybeNum,
+			};
+		}
+	}
+
+	// file:line
+	return { file: beforeLast, line: maybeNum };
+}
+
 registerCommand("break", async (args) => {
 	const session = args.global.session;
 
@@ -15,6 +46,7 @@ registerCommand("break", async (args) => {
 
 	let file: string;
 	let line: number;
+	let column: number | undefined;
 
 	if (patternFlag) {
 		// --pattern urlRegex:line
@@ -38,21 +70,16 @@ registerCommand("break", async (args) => {
 			return 1;
 		}
 
-		// Parse file:line from the target
-		const lastColon = target.lastIndexOf(":");
-		if (lastColon === -1 || lastColon === 0) {
+		// Parse file:line[:column] from the target
+		const parsed = parseFileLineColumn(target);
+		if (!parsed) {
 			console.error(`Invalid breakpoint target: "${target}"`);
-			console.error("  -> Try: agent-dbg break src/app.ts:42");
+			console.error("  -> Try: agent-dbg break src/app.ts:42 or src/app.ts:42:5");
 			return 1;
 		}
-
-		file = target.slice(0, lastColon);
-		line = parseInt(target.slice(lastColon + 1), 10);
-		if (Number.isNaN(line) || line <= 0) {
-			console.error(`Invalid line number in "${target}"`);
-			console.error("  -> Try: agent-dbg break src/app.ts:42");
-			return 1;
-		}
+		file = parsed.file;
+		line = parsed.line;
+		column = parsed.column;
 	}
 
 	const condition = typeof args.flags.condition === "string" ? args.flags.condition : undefined;
@@ -97,6 +124,7 @@ registerCommand("break", async (args) => {
 		line,
 		condition,
 		hitCount,
+		column,
 	};
 	if (patternFlag) {
 		breakArgs.urlRegex = file;

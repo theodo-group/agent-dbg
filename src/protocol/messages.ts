@@ -254,6 +254,8 @@ const SourcemapRequest = z.object({
 
 const SourcemapDisableRequest = z.object({ cmd: z.literal("sourcemap-disable") });
 
+const RestartRequest = z.object({ cmd: z.literal("restart") });
+
 const StopRequest = z.object({ cmd: z.literal("stop") });
 
 // ── Union of all requests (discriminated on cmd) ───────────────────
@@ -291,6 +293,7 @@ export const DaemonRequestSchema = z.union([
 	BreakToggleRequest,
 	BreakableRequest,
 	RestartFrameRequest,
+	RestartRequest,
 	SourcemapRequest,
 	SourcemapDisableRequest,
 	StopRequest,

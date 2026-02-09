@@ -22,15 +22,10 @@ registerCommand("launch", async (args) => {
 		return 1;
 	}
 
-	// Check if daemon already running for this session
-	if (DaemonClient.isRunning(session)) {
-		console.error(`Session "${session}" is already active`);
-		console.error(`  -> Try: agent-dbg stop --session ${session}`);
-		return 1;
+	// Spawn daemon if not already running (e.g. started externally for debugging)
+	if (!DaemonClient.isRunning(session)) {
+		await spawnDaemon(session, { timeout });
 	}
-
-	// Spawn daemon
-	await spawnDaemon(session, { timeout });
 
 	// Send launch command to daemon
 	const client = new DaemonClient(session);

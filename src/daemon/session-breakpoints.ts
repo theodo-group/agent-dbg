@@ -5,7 +5,7 @@ export async function setBreakpoint(
 	session: DebugSession,
 	file: string,
 	line: number,
-	options?: { condition?: string; hitCount?: number; urlRegex?: string },
+	options?: { condition?: string; hitCount?: number; urlRegex?: string; column?: number },
 ): Promise<{ ref: string; location: { url: string; line: number; column?: number } }> {
 	if (!session.cdp) {
 		throw new Error("No active debug session");
@@ -17,14 +17,16 @@ export async function setBreakpoint(
 	let originalFile: string | null = null;
 	let originalLine: number | null = null;
 	let actualLine = line;
+	let actualColumn: number | undefined = options?.column !== undefined ? options.column - 1 : undefined; // user column is 1-based
 	let actualFile = file;
 
 	if (!options?.urlRegex) {
-		const generated = session.sourceMapResolver.toGenerated(file, line, 0);
+		const generated = session.sourceMapResolver.toGenerated(file, line, actualColumn ?? 0);
 		if (generated) {
 			originalFile = file;
 			originalLine = line;
 			actualLine = generated.line;
+			actualColumn = generated.column;
 			// Find the URL of the generated script
 			const scriptInfo = session.scripts.get(generated.scriptId);
 			if (scriptInfo) {
@@ -36,6 +38,9 @@ export async function setBreakpoint(
 	const params: Protocol.Debugger.SetBreakpointByUrlRequest = {
 		lineNumber: actualLine - 1, // CDP uses 0-based lines
 	};
+	if (actualColumn !== undefined) {
+		params.columnNumber = actualColumn;
+	}
 
 	let url: string | null = null;
 	if (options?.urlRegex) {

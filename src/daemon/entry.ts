@@ -52,32 +52,37 @@ server.onRequest(async (req: DaemonRequest): Promise<DaemonResponse> => {
 
 		case "continue": {
 			await debugSession.continue();
-			return { ok: true, data: debugSession.getStatus() };
+			const stateAfter = await debugSession.buildState();
+			return { ok: true, data: stateAfter };
 		}
 
 		case "step": {
 			const { mode = "over" } = req.args;
 			await debugSession.step(mode);
-			return { ok: true, data: debugSession.getStatus() };
+			const stateAfter = await debugSession.buildState();
+			return { ok: true, data: stateAfter };
 		}
 
 		case "pause": {
 			await debugSession.pause();
-			return { ok: true, data: debugSession.getStatus() };
+			const stateAfter = await debugSession.buildState();
+			return { ok: true, data: stateAfter };
 		}
 
 		case "run-to": {
 			const { file, line } = req.args;
 			await debugSession.runTo(file, line);
-			return { ok: true, data: debugSession.getStatus() };
+			const stateAfter = await debugSession.buildState();
+			return { ok: true, data: stateAfter };
 		}
 
 		case "break": {
-			const { file, line, condition, hitCount, urlRegex } = req.args;
+			const { file, line, condition, hitCount, urlRegex, column } = req.args;
 			const bpResult = await debugSession.setBreakpoint(file, line, {
 				condition,
 				hitCount,
 				urlRegex,
+				column,
 			});
 			return { ok: true, data: bpResult };
 		}
@@ -227,6 +232,11 @@ server.onRequest(async (req: DaemonRequest): Promise<DaemonResponse> => {
 		case "sourcemap-disable": {
 			debugSession.sourceMapResolver.setDisabled(true);
 			return { ok: true, data: "disabled" };
+		}
+
+		case "restart": {
+			const result = await debugSession.restart();
+			return { ok: true, data: result };
 		}
 
 		case "stop":

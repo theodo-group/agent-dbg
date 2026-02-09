@@ -98,6 +98,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
 				s: "stack",
 				b: "breakpoints",
 				c: "code",
+				f: "follow",
 			};
 			const mapped = shortMap[key];
 			if (mapped) {
@@ -218,6 +219,10 @@ Source Maps:
   sourcemap [file]                 Show source map info
   sourcemap --disable              Disable resolution globally
 
+Diagnostics:
+  logs [-f|--follow]               Show CDP protocol log
+    [--limit N] [--domain <name>] [--clear]
+
 Global flags:
   --session NAME                   Target session (default: "default")
   --json                           JSON output
@@ -283,5 +288,11 @@ BLACKBOXING:
 
 SOURCE MAPS:
   agent-dbg sourcemap [file]          Show source map info
-  agent-dbg sourcemap --disable       Disable resolution globally`);
+  agent-dbg sourcemap --disable       Disable resolution globally
+
+DIAGNOSTICS:
+  agent-dbg logs [-f|--follow]        Show CDP protocol log
+  agent-dbg logs --limit 100          Show last N entries (default: 50)
+  agent-dbg logs --domain Debugger    Filter by CDP domain
+  agent-dbg logs --clear              Clear the log file`);
 }

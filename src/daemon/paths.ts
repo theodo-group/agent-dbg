@@ -18,6 +18,10 @@ export function getLockPath(session: string): string {
 	return join(getSocketDir(), `${session}.lock`);
 }
 
+export function getLogPath(session: string): string {
+	return join(getSocketDir(), `${session}.cdp.log`);
+}
+
 export function ensureSocketDir(): void {
 	const dir = getSocketDir();
 	if (!existsSync(dir)) {

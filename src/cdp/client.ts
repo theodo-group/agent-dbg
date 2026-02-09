@@ -1,4 +1,5 @@
 import type { ProtocolMapping } from "devtools-protocol/types/protocol-mapping.js";
+import type { CdpLogger } from "./logger.ts";
 import type { CdpEvent, CdpRequest, CdpResponse } from "./types.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -21,20 +22,24 @@ export class CdpClient {
 	private pending = new Map<number, PendingRequest>();
 	private listeners = new Map<string, Set<AnyHandler>>();
 	private isConnected = false;
+	private logger: CdpLogger | null;
+	/** Map request id → method name for response logging */
+	private sentMethods = new Map<number, string>();
 
-	private constructor(ws: WebSocket) {
+	private constructor(ws: WebSocket, logger?: CdpLogger) {
 		this.ws = ws;
+		this.logger = logger ?? null;
 		this.isConnected = true;
 		this.setupHandlers();
 	}
 
-	static async connect(wsUrl: string): Promise<CdpClient> {
+	static async connect(wsUrl: string, logger?: CdpLogger): Promise<CdpClient> {
 		return new Promise<CdpClient>((resolve, reject) => {
 			const ws = new WebSocket(wsUrl);
 
 			const onOpen = () => {
 				ws.removeEventListener("error", onError);
-				const client = new CdpClient(ws);
+				const client = new CdpClient(ws, logger);
 				resolve(client);
 			};
 
@@ -53,7 +58,6 @@ export class CdpClient {
 		method: T,
 		...params: ProtocolMapping.Commands[T]["paramsType"]
 	): Promise<ProtocolMapping.Commands[T]["returnType"]>;
-	async send(method: string, params?: Record<string, unknown>): Promise<unknown>;
 	async send(method: string, ...args: unknown[]): Promise<unknown> {
 		if (!this.isConnected) {
 			throw new Error("CDP client is not connected");
@@ -66,9 +70,13 @@ export class CdpClient {
 			request.params = params;
 		}
 
+		this.sentMethods.set(id, method);
+		this.logger?.logSend(id, method, params as Record<string, unknown> | undefined);
+
 		return new Promise<unknown>((resolve, reject) => {
 			const timer = setTimeout(() => {
 				this.pending.delete(id);
+				this.sentMethods.delete(id);
 				reject(new Error(`CDP request timed out: ${method} (id=${id})`));
 			}, DEFAULT_TIMEOUT_MS);
 
@@ -173,6 +181,10 @@ export class CdpClient {
 
 		if ("id" in parsed && typeof parsed.id === "number") {
 			const response = parsed as CdpResponse;
+			const method = this.sentMethods.get(response.id) ?? "unknown";
+			this.sentMethods.delete(response.id);
+			this.logger?.logResponse(response.id, method, response.result, response.error);
+
 			const pending = this.pending.get(response.id);
 			if (!pending) {
 				return;
@@ -187,6 +199,8 @@ export class CdpClient {
 			}
 		} else if ("method" in parsed) {
 			const event = parsed as CdpEvent;
+			this.logger?.logEvent(event.method, event.params);
+
 			const handlers = this.listeners.get(event.method);
 			if (handlers) {
 				for (const handler of handlers) {
