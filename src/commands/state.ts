@@ -61,7 +61,9 @@ registerCommand("state", async (args) => {
 	}
 
 	// Paused state — header
-	const loc = data.location ? `${data.location.url}:${data.location.line}` : "unknown";
+	const loc = data.location
+		? `${data.location.url}:${data.location.line}${data.location.column !== undefined ? `:${data.location.column}` : ""}`
+		: "unknown";
 	const reason = data.reason ?? "unknown";
 	console.log(`\u23F8 Paused at ${loc} (${reason})`);
 
@@ -75,6 +77,7 @@ registerCommand("state", async (args) => {
 			lineNumber: l.line,
 			content: l.text,
 			isCurrent: l.current,
+			currentColumn: l.current ? data.location?.column : undefined,
 		}));
 		console.log(formatSource(sourceLines));
 	}

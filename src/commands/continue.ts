@@ -33,8 +33,9 @@ registerCommand("continue", async (args) => {
 
 function printStatus(data: SessionStatus): void {
 	if (data.state === "paused" && data.pauseInfo) {
+		const col = data.pauseInfo.column !== undefined ? `:${data.pauseInfo.column + 1}` : "";
 		const loc = data.pauseInfo.url
-			? `${data.pauseInfo.url}:${(data.pauseInfo.line ?? 0) + 1}`
+			? `${data.pauseInfo.url}:${(data.pauseInfo.line ?? 0) + 1}${col}`
 			: "unknown";
 		console.log(`Paused at ${loc} (${data.pauseInfo.reason})`);
 	} else if (data.state === "running") {

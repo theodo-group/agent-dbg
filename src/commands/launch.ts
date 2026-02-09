@@ -55,7 +55,10 @@ registerCommand("launch", async (args) => {
 	} else {
 		console.log(`Session "${session}" started (pid ${data.pid})`);
 		if (data.paused && data.pauseInfo) {
-			const loc = data.pauseInfo.url ? `${data.pauseInfo.url}:${data.pauseInfo.line}` : "unknown";
+			const col = data.pauseInfo.column !== undefined ? `:${data.pauseInfo.column + 1}` : "";
+			const loc = data.pauseInfo.url
+				? `${data.pauseInfo.url}:${data.pauseInfo.line}${col}`
+				: "unknown";
 			console.log(`Paused at ${loc}`);
 		} else {
 			console.log("Running");
