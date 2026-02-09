@@ -13,6 +13,41 @@ bun install --global agent-dbg
 npx skills add theodo-group/agent-dbg # Install skills
 ```
 
+## Example
+```bash
+> agent-dbg launch --brk tsx src/app.ts
+Session "default" started (pid 70445)
+Paused at ./src/app.ts:0:1
+
+> agent-dbg break src/app.ts:19
+BP#1 set at src/app.ts:19
+
+> agent-dbg continue
+⏸ Paused at ./src/app.ts:19:21 (other)
+
+Source:
+   16│
+   17│const alice: Person = { name: "Alice", age: 30 };
+   18│const greeting: string = greet(alice);
+ → 19│const sum: number = add(2, 3);
+                          ^
+   20│console.log(greeting);
+   21│console.log("Sum:", sum);
+   22│
+
+Locals:
+@v1  greet     Function greet(person)
+@v2  add       Function add(a,b)
+@v3  alice     Object { name: "Alice", age: 30 }
+@v4  greeting  "Hello, Alice! Age: 30"
+
+Stack:
+@f0  (anonymous)  ./src/app.ts:19:21
+@f1  run          node:internal/modules/esm/module_job:413:25
+
+Breakpoints: 1 active
+```
+
 ## Usage
 
 ```bash
