@@ -12,6 +12,10 @@ Requires [Bun](https://bun.sh).
 bun install --global agent-dbg
 ```
 
+```bash
+npx skills add theodo-group/agent-dbg
+```
+
 ## Usage
 
 ```bash
