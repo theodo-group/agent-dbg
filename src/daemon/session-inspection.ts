@@ -139,7 +139,7 @@ export async function evalExpression(
 export async function getVars(
 	session: DebugSession,
 	options: { frame?: string; names?: string[]; allScopes?: boolean } = {},
-): Promise<Array<{ ref: string; name: string; type: string; value: string }>> {
+): Promise<Array<{ ref: string; name: string; type: string; value: string; scope: string }>> {
 	if (!session.cdp) {
 		throw new Error("No active debug session");
 	}
@@ -174,19 +174,14 @@ export async function getVars(
 		name: string;
 		type: string;
 		value: string;
+		scope: string;
 	}> = [];
 
 	for (const scope of scopeChain) {
 		const scopeType = scope.type;
 
-		// Include local, module, block, and script scopes by default.
-		// Include closure scope only with allScopes. Always skip global.
-		const includeScope =
-			scopeType === "local" ||
-			scopeType === "module" ||
-			scopeType === "block" ||
-			scopeType === "script" ||
-			(options.allScopes && scopeType === "closure");
+		// Show all scopes except "global" (too noisy — thousands of entries)
+		const includeScope = scopeType !== "global";
 
 		if (includeScope) {
 			const scopeObj = scope.object;
@@ -223,6 +218,7 @@ export async function getVars(
 					name: propName,
 					type: propValue.type,
 					value: formatValue(propValue),
+					scope: scopeType,
 				});
 			}
 		}

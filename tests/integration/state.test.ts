@@ -47,7 +47,7 @@ describe("buildState integration", () => {
 			expect(firstFrame?.line).toBeGreaterThan(0);
 
 			// Locals should be present (may be empty at entry point, but the array should exist)
-			expect(snapshot.locals).toBeDefined();
+			expect(snapshot.vars).toBeDefined();
 
 			// Breakpoint count should be present
 			expect(snapshot.breakpointCount).toBeDefined();
@@ -69,7 +69,7 @@ describe("buildState integration", () => {
 			expect(snapshot.status).toBe("running");
 			// When running, no source/locals/stack should be present
 			expect(snapshot.source).toBeUndefined();
-			expect(snapshot.locals).toBeUndefined();
+			expect(snapshot.vars).toBeUndefined();
 			expect(snapshot.stack).toBeUndefined();
 		} finally {
 			await session.stop();
@@ -88,7 +88,7 @@ describe("buildState integration", () => {
 
 			expect(snapshot.status).toBe("paused");
 			// Locals should be present
-			expect(snapshot.locals).toBeDefined();
+			expect(snapshot.vars).toBeDefined();
 			// Source and stack should NOT be present (filtered out)
 			expect(snapshot.source).toBeUndefined();
 			expect(snapshot.stack).toBeUndefined();
@@ -114,7 +114,7 @@ describe("buildState integration", () => {
 			expect(snapshot.stack?.length).toBeGreaterThan(0);
 			// Source, locals, and breakpoints should NOT be present (filtered out)
 			expect(snapshot.source).toBeUndefined();
-			expect(snapshot.locals).toBeUndefined();
+			expect(snapshot.vars).toBeUndefined();
 			expect(snapshot.breakpointCount).toBeUndefined();
 		} finally {
 			await session.stop();
@@ -136,7 +136,7 @@ describe("buildState integration", () => {
 			expect(snapshot.source).toBeDefined();
 			expect(snapshot.source?.lines.length).toBeGreaterThan(0);
 			// Locals, stack, and breakpoints should NOT be present (filtered out)
-			expect(snapshot.locals).toBeUndefined();
+			expect(snapshot.vars).toBeUndefined();
 			expect(snapshot.stack).toBeUndefined();
 			expect(snapshot.breakpointCount).toBeUndefined();
 		} finally {
@@ -161,8 +161,8 @@ describe("buildState integration", () => {
 			const snapshot = await session.buildState();
 
 			// Check that variable refs are assigned
-			if (snapshot.locals && snapshot.locals.length > 0) {
-				const firstLocal = snapshot.locals[0];
+			if (snapshot.vars && snapshot.vars.length > 0) {
+				const firstLocal = snapshot.vars[0];
 				expect(firstLocal?.ref).toMatch(/^@v\d+$/);
 				expect(firstLocal?.name).toBeDefined();
 				expect(firstLocal?.value).toBeDefined();

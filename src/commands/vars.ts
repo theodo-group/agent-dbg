@@ -45,6 +45,7 @@ registerCommand("vars", async (args) => {
 		name: string;
 		type: string;
 		value: string;
+		scope: string;
 	}>;
 
 	if (args.global.json) {
@@ -61,6 +62,7 @@ registerCommand("vars", async (args) => {
 		ref: v.ref,
 		name: v.name,
 		value: v.value,
+		scope: v.scope,
 	}));
 	const formatted = formatVariables(vars);
 	if (formatted) {

@@ -75,7 +75,7 @@ export interface StateSnapshot {
 	reason?: string;
 	location?: { url: string; line: number; column?: number };
 	source?: { lines: Array<{ line: number; text: string; current?: boolean }> };
-	locals?: Array<{ ref: string; name: string; value: string }>;
+	vars?: Array<{ ref: string; name: string; value: string; scope: string }>;
 	stack?: Array<{
 		ref: string;
 		functionName: string;

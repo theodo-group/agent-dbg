@@ -198,13 +198,13 @@ export async function buildState(
 		try {
 			const scopeChain = targetFrame.scopeChain;
 			if (scopeChain) {
-				const locals: Array<{ ref: string; name: string; value: string }> = [];
+				const vars: Array<{ ref: string; name: string; value: string; scope: string }> = [];
 
 				for (const scope of scopeChain) {
 					const scopeType = scope.type;
 
-					// By default only show "local" scope; with --all-scopes include "closure" too
-					if (scopeType === "local" || (options.allScopes && scopeType === "closure")) {
+					// Show all scopes except "global" (too noisy — thousands of entries)
+					if (scopeType !== "global") {
 						const scopeObj = scope.object;
 						const objectId = scopeObj.objectId;
 						if (!objectId) continue;
@@ -229,10 +229,11 @@ export async function buildState(
 							const remoteId = propValue.objectId ?? `primitive:${propName}`;
 							const ref = session.refs.addVar(remoteId as string, propName);
 
-							locals.push({
+							vars.push({
 								ref,
 								name: propName,
 								value: formatValue(propValue),
+								scope: scopeType,
 							});
 						}
 					}
@@ -241,7 +242,7 @@ export async function buildState(
 					if (scopeType === "global") continue;
 				}
 
-				snapshot.locals = locals;
+				snapshot.vars = vars;
 			}
 		} catch {
 			// Variables not available

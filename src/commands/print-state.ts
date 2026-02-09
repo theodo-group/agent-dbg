@@ -38,20 +38,26 @@ export function printState(data: StateSnapshot): void {
 		console.log(formatSource(sourceLines));
 	}
 
-	// Locals section
-	if (data.locals) {
+	// Variables section
+	if (data.vars) {
 		console.log("");
-		console.log("Locals:");
-		const vars: Variable[] = data.locals.map((v) => ({
+		const vars: Variable[] = data.vars.map((v) => ({
 			ref: v.ref,
 			name: v.name,
 			value: v.value,
+			scope: v.scope,
 		}));
 		const formatted = formatVariables(vars);
 		if (formatted) {
+			// Single scope: simple header; multi-scope: grouped headers from formatter
+			const scopes = new Set(vars.map((v) => v.scope ?? "local"));
+			if (scopes.size <= 1) {
+				console.log("Locals:");
+			}
 			console.log(formatted);
 		} else {
-			console.log("  (no locals)");
+			console.log("Locals:");
+			console.log("  (none)");
 		}
 	}
 

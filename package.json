@@ -1,14 +1,14 @@
 {
   "name": "agent-dbg",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Node.js Debugger CLI for AI Agents",
   "type": "module",
   "bin": {
-    "agent-dbg": "./src/main.ts"
+    "agent-dbg": "./dist/main.js"
   },
   "scripts": {
     "dev": "bun run src/main.ts",
-    "build": "bun build src/main.ts --compile --outfile dist/agent-dbg",
+    "build": "bun build src/main.ts --outdir dist",
     "test": "bun test",
     "lint": "biome check .",
     "format": "biome check --write .",

@@ -6,6 +6,10 @@ interface Person {
 
 function greet(person: Person): string {
 	const message: string = `Hello, ${person.name}! Age: ${person.age}`;
+	if (person.name === "Alice") {
+		const a = 1;
+		return "Hello, Alice!";
+	}
 	return message;
 }
 
