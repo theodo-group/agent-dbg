@@ -1,5 +1,6 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
+import { shortPath } from "../formatter/path.ts";
 
 registerCommand("break-ls", async (args) => {
 	const session = args.global.session;
@@ -37,7 +38,7 @@ registerCommand("break-ls", async (args) => {
 			console.log("No breakpoints or logpoints set");
 		} else {
 			for (const bp of data) {
-				const loc = `${bp.url}:${bp.line}`;
+				const loc = `${shortPath(bp.url)}:${bp.line}`;
 				let line = `${bp.ref} ${loc}`;
 				if (bp.type === "LP" && bp.template) {
 					line += ` (log: ${bp.template})`;

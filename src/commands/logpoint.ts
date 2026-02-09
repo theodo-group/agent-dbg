@@ -1,5 +1,6 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
+import { shortPath } from "../formatter/path.ts";
 
 registerCommand("logpoint", async (args) => {
 	const session = args.global.session;
@@ -70,7 +71,7 @@ registerCommand("logpoint", async (args) => {
 	if (args.global.json) {
 		console.log(JSON.stringify(data, null, 2));
 	} else {
-		const loc = `${data.location.url}:${data.location.line}`;
+		const loc = `${shortPath(data.location.url)}:${data.location.line}`;
 		console.log(`${data.ref} set at ${loc} (log: ${template})`);
 	}
 

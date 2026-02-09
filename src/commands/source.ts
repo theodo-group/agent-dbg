@@ -1,5 +1,6 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
+import { shortPath } from "../formatter/path.ts";
 import type { SourceLine } from "../formatter/source.ts";
 import { formatSource } from "../formatter/source.ts";
 
@@ -47,7 +48,7 @@ registerCommand("source", async (args) => {
 		return 0;
 	}
 
-	console.log(`Source: ${data.url}`);
+	console.log(`Source: ${shortPath(data.url)}`);
 	const sourceLines: SourceLine[] = data.lines.map((l) => ({
 		lineNumber: l.line,
 		content: l.text,

@@ -1,5 +1,6 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
+import { shortPath } from "../formatter/path.ts";
 
 function parseFileLineColumn(
 	target: string,
@@ -112,7 +113,7 @@ registerCommand("break", async (args) => {
 		if (args.global.json) {
 			console.log(JSON.stringify(data, null, 2));
 		} else {
-			const loc = `${data.location.url}:${data.location.line}`;
+			const loc = `${shortPath(data.location.url)}:${data.location.line}`;
 			console.log(`${data.ref} set at ${loc} (log: ${logTemplate})`);
 		}
 
@@ -146,7 +147,7 @@ registerCommand("break", async (args) => {
 	if (args.global.json) {
 		console.log(JSON.stringify(data, null, 2));
 	} else {
-		const loc = `${data.location.url}:${data.location.line}`;
+		const loc = `${shortPath(data.location.url)}:${data.location.line}`;
 		let msg = `${data.ref} set at ${loc}`;
 		if (condition) {
 			msg += ` (condition: ${condition})`;

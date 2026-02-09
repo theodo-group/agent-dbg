@@ -1,4 +1,5 @@
 import type { StateSnapshot } from "../daemon/session.ts";
+import { shortPath } from "../formatter/path.ts";
 import type { SourceLine } from "../formatter/source.ts";
 import { formatSource } from "../formatter/source.ts";
 import type { StackFrame } from "../formatter/stack.ts";
@@ -20,7 +21,7 @@ export function printState(data: StateSnapshot): void {
 
 	// Paused state — header
 	const loc = data.location
-		? `${data.location.url}:${data.location.line}${data.location.column !== undefined ? `:${data.location.column}` : ""}`
+		? `${shortPath(data.location.url)}:${data.location.line}${data.location.column !== undefined ? `:${data.location.column}` : ""}`
 		: "unknown";
 	const reason = data.reason ?? "unknown";
 	console.log(`\u23F8 Paused at ${loc} (${reason})`);

@@ -1,3 +1,5 @@
+import { shortPath } from "./path.ts";
+
 export interface StackFrame {
 	ref: string;
 	functionName: string;
@@ -59,10 +61,11 @@ export function formatStack(frames: StackFrame[]): string {
 
 		const ref = frame.ref.padEnd(maxRefLen);
 		const name = frame.functionName.padEnd(maxNameLen);
+		const file = shortPath(frame.file);
 		const loc =
 			frame.column !== undefined
-				? `${frame.file}:${frame.line}:${frame.column}`
-				: `${frame.file}:${frame.line}`;
+				? `${file}:${frame.line}:${frame.column}`
+				: `${file}:${frame.line}`;
 		outputLines.push(`${ref}  ${name}  ${loc}`);
 	}
 

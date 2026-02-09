@@ -1,5 +1,6 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
+import { shortPath } from "../formatter/path.ts";
 
 registerCommand("status", async (args) => {
 	const session = args.global.session;
@@ -47,7 +48,7 @@ registerCommand("status", async (args) => {
 
 		if (data.pauseInfo) {
 			const loc = data.pauseInfo.url
-				? `${data.pauseInfo.url}:${data.pauseInfo.line}${data.pauseInfo.column !== undefined ? `:${data.pauseInfo.column}` : ""}`
+				? `${shortPath(data.pauseInfo.url)}:${data.pauseInfo.line}${data.pauseInfo.column !== undefined ? `:${data.pauseInfo.column}` : ""}`
 				: "unknown";
 			console.log(`  Paused: ${data.pauseInfo.reason} at ${loc}`);
 		}

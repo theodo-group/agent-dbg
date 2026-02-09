@@ -1,5 +1,6 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
+import { shortPath } from "../formatter/path.ts";
 
 registerCommand("search", async (args) => {
 	const session = args.global.session;
@@ -66,7 +67,7 @@ registerCommand("search", async (args) => {
 	}
 
 	for (const match of data) {
-		console.log(`${match.url}:${match.line}: ${match.content}`);
+		console.log(`${shortPath(match.url)}:${match.line}: ${match.content}`);
 	}
 
 	return 0;
