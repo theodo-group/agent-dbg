@@ -111,7 +111,8 @@ agent-dbg exceptions --since 3            # Last 3 exceptions
 ## Breakpoints
 
 ```bash
-agent-dbg break <file>:<line>             # Set breakpoint
+agent-dbg break <file>:<line>                       # Set breakpoint
+agent-dbg break <file>:<line>:<column>              # Set breakpoint
 agent-dbg break src/app.ts:42 --condition "x > 10"  # Conditional
 agent-dbg break src/app.ts:42 --hit-count 5         # Break on Nth hit
 agent-dbg break src/app.ts:42 --continue            # Log but don't pause
