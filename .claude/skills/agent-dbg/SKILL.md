@@ -20,6 +20,8 @@ description: >
 ```bash
 # 1. Launch with breakpoint at first line
 agent-dbg launch --brk node app.js
+# Or attach to a running node process with the --inspect flag
+agent-dbg attach 9229
 
 # 2. Set breakpoints at suspicious locations
 agent-dbg break src/handler.ts:42
