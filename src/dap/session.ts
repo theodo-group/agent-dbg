@@ -42,6 +42,14 @@ interface DapBreakpointEntry {
 	actualLine?: number;
 }
 
+interface DapFunctionBreakpointEntry {
+	ref: string;
+	name: string;
+	condition?: string;
+	hitCondition?: string;
+	verified: boolean;
+}
+
 interface DapStackFrame {
 	id: number;
 	name: string;
@@ -72,9 +80,12 @@ export class DapSession {
 	// Breakpoints: DAP requires sending ALL breakpoints per file at once
 	private breakpoints = new Map<string, DapBreakpointEntry[]>();
 	private allBreakpoints: DapBreakpointEntry[] = [];
+	private functionBreakpoints: DapFunctionBreakpointEntry[] = [];
 
 	// Promise that resolves when the adapter stops (for step/continue/pause)
 	private stoppedWaiter: { resolve: () => void; reject: (e: Error) => void } | null = null;
+	// Deduplicates concurrent fetchStackTrace calls
+	private _stackFetchPromise: Promise<void> | null = null;
 
 	constructor(session: string, runtime: string) {
 		this._session = session;
@@ -154,6 +165,11 @@ export class DapSession {
 			// Some adapters don't stop immediately on attach
 		});
 
+		// If we're not paused after waiting, the target is running
+		if (this._state === "idle") {
+			this._state = "running";
+		}
+
 		return { wsUrl: `dap://${this._runtime}/${target}` };
 	}
 
@@ -186,6 +202,7 @@ export class DapSession {
 		this.refs.clearAll();
 		this.breakpoints.clear();
 		this.allBreakpoints = [];
+		this.functionBreakpoints = [];
 		this._consoleMessages = [];
 		this._exceptionEntries = [];
 	}
@@ -312,6 +329,7 @@ export class DapSession {
 		const files = [...this.breakpoints.keys()];
 		this.breakpoints.clear();
 		this.allBreakpoints = [];
+		this.functionBreakpoints = [];
 
 		// Remove all BP refs
 		for (const entry of this.refs.list("BP")) {
@@ -325,6 +343,9 @@ export class DapSession {
 				breakpoints: [],
 			});
 		}
+
+		// Clear function breakpoints
+		await this.getDap().send("setFunctionBreakpoints", { breakpoints: [] });
 	}
 
 	listBreakpoints(): Array<{
@@ -334,13 +355,88 @@ export class DapSession {
 		line: number;
 		condition?: string;
 	}> {
-		return this.allBreakpoints.map((bp) => ({
+		const fileBps = this.allBreakpoints.map((bp) => ({
 			ref: bp.ref,
 			type: "BP" as const,
 			url: bp.file,
 			line: bp.actualLine ?? bp.line,
 			condition: bp.condition,
 		}));
+		const fnBps = this.functionBreakpoints.map((bp) => ({
+			ref: bp.ref,
+			type: "BP" as const,
+			url: bp.name,
+			line: 0,
+			condition: bp.condition,
+		}));
+		return [...fileBps, ...fnBps];
+	}
+
+	/**
+	 * Set a breakpoint on a function by name (e.g. "__assert_rtn", "yoga::Style::operator==").
+	 * DAP's setFunctionBreakpoints replaces the full set, so we track and re-send all.
+	 */
+	async setFunctionBreakpoint(
+		name: string,
+		options?: { condition?: string; hitCount?: number },
+	): Promise<{ ref: string }> {
+		this.requireConnected();
+
+		const entry: DapFunctionBreakpointEntry = {
+			ref: "",
+			name,
+			condition: options?.condition,
+			hitCondition: options?.hitCount ? String(options.hitCount) : undefined,
+			verified: false,
+		};
+
+		this.functionBreakpoints.push(entry);
+
+		const ref = this.refs.addBreakpoint(`dap-fn:${name}`, {
+			file: name,
+			line: 0,
+		});
+		entry.ref = ref;
+
+		await this.syncFunctionBreakpoints();
+		return { ref };
+	}
+
+	async removeFunctionBreakpoint(ref: string): Promise<void> {
+		this.requireConnected();
+
+		const idx = this.functionBreakpoints.findIndex((bp) => bp.ref === ref);
+		if (idx === -1) {
+			throw new Error(`Unknown function breakpoint ref: ${ref}`);
+		}
+
+		this.functionBreakpoints.splice(idx, 1);
+		this.refs.remove(ref);
+		await this.syncFunctionBreakpoints();
+	}
+
+	private async syncFunctionBreakpoints(): Promise<void> {
+		const dapBps = this.functionBreakpoints.map((bp) => ({
+			name: bp.name,
+			condition: bp.condition,
+			hitCondition: bp.hitCondition,
+		}));
+
+		const response = await this.getDap().send("setFunctionBreakpoints", {
+			breakpoints: dapBps,
+		});
+
+		const body = response.body as
+			| { breakpoints?: Array<{ id?: number; verified?: boolean }> }
+			| undefined;
+		const resultBps = body?.breakpoints ?? [];
+		for (let i = 0; i < this.functionBreakpoints.length; i++) {
+			const entry = this.functionBreakpoints[i];
+			const result = resultBps[i];
+			if (entry && result) {
+				entry.verified = result.verified ?? false;
+			}
+		}
 	}
 
 	// ── Inspection ────────────────────────────────────────────────────
@@ -845,9 +941,14 @@ export class DapSession {
 				reason: event.reason,
 			};
 
-			// Resolve any waiting promise (stack will be fetched after waiter resolves)
-			this.stoppedWaiter?.resolve();
-			this.stoppedWaiter = null;
+			if (this.stoppedWaiter) {
+				// Waiter exists: caller (continue/step/pause) will fetch stack after resolve
+				this.stoppedWaiter.resolve();
+				this.stoppedWaiter = null;
+			} else {
+				// No waiter: external polling will see paused state, eagerly fetch stack
+				this.fetchStackTrace().catch(() => {});
+			}
 		});
 
 		dap.on("continued", (_body: unknown) => {
@@ -909,6 +1010,20 @@ export class DapSession {
 	}
 
 	private async fetchStackTrace(): Promise<void> {
+		// Deduplicate: if a fetch is already in progress, just await it
+		if (this._stackFetchPromise) {
+			await this._stackFetchPromise;
+			return;
+		}
+		this._stackFetchPromise = this._fetchStackTraceImpl();
+		try {
+			await this._stackFetchPromise;
+		} finally {
+			this._stackFetchPromise = null;
+		}
+	}
+
+	private async _fetchStackTraceImpl(): Promise<void> {
 		if (!this.dap || this._state !== "paused") return;
 
 		try {
