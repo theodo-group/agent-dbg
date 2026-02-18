@@ -251,6 +251,66 @@ describe("dead socket detection", () => {
 	});
 });
 
+describe("stale daemon detection (Docker-style PID check)", () => {
+	test("isRunning returns false when socket exists but no lock file", () => {
+		const session = testSession("nolck");
+		const socketPath = getSocketPath(session);
+
+		writeFileSync(socketPath, "");
+
+		expect(DaemonClient.isRunning(session)).toBe(false);
+	});
+
+	test("isRunning returns false when socket+lock exist but PID is dead", () => {
+		const session = testSession("dpid");
+		const socketPath = getSocketPath(session);
+		const lockPath = getLockPath(session);
+
+		writeFileSync(socketPath, "");
+		writeFileSync(lockPath, "999999"); // non-existent PID
+
+		expect(DaemonClient.isRunning(session)).toBe(false);
+	});
+
+	test("isRunning returns true when daemon is actually alive", async () => {
+		const session = testSession("alive");
+		const server = new DaemonServer(session, { idleTimeout: 60 });
+		server.onRequest(async () => ({ ok: true }));
+		await server.start();
+
+		try {
+			expect(DaemonClient.isRunning(session)).toBe(true);
+		} finally {
+			await server.stop();
+		}
+	});
+
+	test("isRunning returns false when no socket exists", () => {
+		const session = testSession("nosck");
+		expect(DaemonClient.isRunning(session)).toBe(false);
+	});
+
+	test("cleanStaleFiles removes orphaned socket and lock", () => {
+		const session = testSession("clnst");
+		const socketPath = getSocketPath(session);
+		const lockPath = getLockPath(session);
+
+		writeFileSync(socketPath, "");
+		writeFileSync(lockPath, "999999");
+
+		DaemonClient.cleanStaleFiles(session);
+
+		expect(existsSync(socketPath)).toBe(false);
+		expect(existsSync(lockPath)).toBe(false);
+	});
+
+	test("cleanStaleFiles is safe when files don't exist", () => {
+		const session = testSession("clnno");
+		// Should not throw
+		DaemonClient.cleanStaleFiles(session);
+	});
+});
+
 describe("listSessions", () => {
 	test("returns active sessions", async () => {
 		const session1 = testSession("la");

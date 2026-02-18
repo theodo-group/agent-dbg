@@ -1,6 +1,6 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 import { type DaemonResponse, DaemonResponseSchema } from "../protocol/messages.ts";
-import { getSocketDir, getSocketPath } from "./paths.ts";
+import { getLockPath, getSocketDir, getSocketPath } from "./paths.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -107,19 +107,41 @@ export class DaemonClient {
 		});
 	}
 
+	/**
+	 * Check if a daemon is running for the given session.
+	 * Uses PID liveness check (Docker-style): reads the lock file PID
+	 * and verifies the process is actually alive via kill(pid, 0).
+	 */
 	static isRunning(session: string): boolean {
 		const socketPath = getSocketPath(session);
 		if (!existsSync(socketPath)) {
 			return false;
 		}
-		// Try connecting to verify the daemon is actually alive
+
+		const lockPath = getLockPath(session);
+		if (!existsSync(lockPath)) {
+			// Socket exists but no lock file — stale
+			return false;
+		}
+
 		try {
-			// Use a sync approach: check if socket file exists
-			// A true liveness check requires async connection, so we check the file
+			const pid = parseInt(readFileSync(lockPath, "utf-8"), 10);
+			if (Number.isNaN(pid)) return false;
+			process.kill(pid, 0); // signal 0 = liveness check
 			return true;
 		} catch {
 			return false;
 		}
+	}
+
+	/**
+	 * Remove stale socket and lock files for a session whose daemon is no longer alive.
+	 */
+	static cleanStaleFiles(session: string): void {
+		const socketPath = getSocketPath(session);
+		const lockPath = getLockPath(session);
+		if (existsSync(socketPath)) unlinkSync(socketPath);
+		if (existsSync(lockPath)) unlinkSync(lockPath);
 	}
 
 	static async isAlive(session: string): Promise<boolean> {

@@ -1,6 +1,6 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
-import { spawnDaemon } from "../daemon/spawn.ts";
+import { ensureDaemon } from "../daemon/spawn.ts";
 import { shortPath } from "../formatter/path.ts";
 
 registerCommand("launch", async (args) => {
@@ -23,10 +23,8 @@ registerCommand("launch", async (args) => {
 		return 1;
 	}
 
-	// Spawn daemon if not already running (e.g. started externally for debugging)
-	if (!DaemonClient.isRunning(session)) {
-		await spawnDaemon(session, { timeout });
-	}
+	// Ensure daemon is running — auto-cleans stale sockets if daemon is dead
+	await ensureDaemon(session, { timeout });
 
 	// Send launch command to daemon
 	const client = new DaemonClient(session);

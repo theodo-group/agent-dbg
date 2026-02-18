@@ -1,4 +1,5 @@
 import { existsSync, openSync } from "node:fs";
+import { DaemonClient } from "./client.ts";
 import { ensureSocketDir, getDaemonLogPath, getSocketPath } from "./paths.ts";
 
 const POLL_INTERVAL_MS = 50;
@@ -55,4 +56,21 @@ export async function spawnDaemon(
 	}
 
 	throw new Error(`Daemon for session "${session}" failed to start within ${SPAWN_TIMEOUT_MS}ms`);
+}
+
+/**
+ * Ensure a daemon is running for the session. If the socket exists but the
+ * daemon process is dead (stale), cleans up and respawns automatically.
+ */
+export async function ensureDaemon(
+	session: string,
+	options?: { port?: number; timeout?: number },
+): Promise<void> {
+	if (DaemonClient.isRunning(session)) return;
+
+	// Clean up stale socket/lock files before spawning, otherwise
+	// spawnDaemon's poll loop would see the old socket and return immediately.
+	DaemonClient.cleanStaleFiles(session);
+
+	await spawnDaemon(session, options);
 }

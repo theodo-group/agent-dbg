@@ -1,6 +1,6 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
-import { spawnDaemon } from "../daemon/spawn.ts";
+import { ensureDaemon } from "../daemon/spawn.ts";
 
 registerCommand("attach", async (args) => {
 	const session = args.global.session;
@@ -12,17 +12,17 @@ registerCommand("attach", async (args) => {
 		return 1;
 	}
 
-	// Check if daemon already running
+	// Check if daemon already running (PID-aware — stale sockets won't block)
 	if (DaemonClient.isRunning(session)) {
 		console.error(`Session "${session}" is already active`);
 		console.error(`  -> Try: agent-dbg stop --session ${session}`);
 		return 1;
 	}
 
-	// Spawn daemon
+	// Ensure daemon is running — auto-cleans stale sockets if daemon is dead
 	const timeout =
 		typeof args.flags.timeout === "string" ? parseInt(args.flags.timeout, 10) : undefined;
-	await spawnDaemon(session, { timeout });
+	await ensureDaemon(session, { timeout });
 
 	// Send attach command
 	const client = new DaemonClient(session);
