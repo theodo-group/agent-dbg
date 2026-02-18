@@ -56,11 +56,15 @@ export class DaemonServer {
 
 		const server = this;
 
-		this.listener = Bun.listen<{ buffer: string }>({
+		this.listener = Bun.listen<{
+			buffer: string;
+			pendingWrite: Buffer | null;
+			pendingOffset: number;
+		}>({
 			unix: this.socketPath,
 			socket: {
 				open(socket) {
-					socket.data = { buffer: "" };
+					socket.data = { buffer: "", pendingWrite: null, pendingOffset: 0 };
 					server.resetIdleTimer();
 				},
 				data(socket, data) {
@@ -73,6 +77,10 @@ export class DaemonServer {
 
 					server.handleMessage(socket, line);
 				},
+				drain(socket) {
+					// Continue writing any pending data
+					server.flushPending(socket);
+				},
 				close() {},
 				error(_socket, error) {
 					server.logger?.error("socket.error", error.message);
@@ -84,20 +92,49 @@ export class DaemonServer {
 		this.resetIdleTimer();
 	}
 
-	private handleMessage(
-		socket: { write(data: string | Buffer | Uint8Array): number; end(): void },
-		line: string,
-	): void {
+	// biome-ignore lint/suspicious/noExplicitAny: Bun socket type
+	private flushPending(socket: any): void {
+		const data = socket.data as {
+			pendingWrite: Buffer | null;
+			pendingOffset: number;
+		};
+		if (!data.pendingWrite) return;
+
+		while (data.pendingOffset < data.pendingWrite.length) {
+			const written = socket.write(data.pendingWrite.subarray(data.pendingOffset));
+			if (written === 0) {
+				// Still full — drain will call us again
+				return;
+			}
+			data.pendingOffset += written;
+		}
+
+		// All data flushed
+		data.pendingWrite = null;
+		data.pendingOffset = 0;
+		socket.end();
+	}
+
+	// biome-ignore lint/suspicious/noExplicitAny: Bun socket type
+	private sendResponse(socket: any, response: DaemonResponse): void {
+		const payload = Buffer.from(`${JSON.stringify(response)}\n`);
+		const written = socket.write(payload);
+		if (written < payload.length) {
+			// Partial write — store remainder for drain
+			socket.data.pendingWrite = payload;
+			socket.data.pendingOffset = written;
+		} else {
+			socket.end();
+		}
+	}
+
+	// biome-ignore lint/suspicious/noExplicitAny: Bun socket type
+	private handleMessage(socket: any, line: string): void {
 		let json: unknown;
 		try {
 			json = JSON.parse(line);
 		} catch {
-			const errResponse: DaemonResponse = {
-				ok: false,
-				error: "Invalid JSON",
-			};
-			socket.write(`${JSON.stringify(errResponse)}\n`);
-			socket.end();
+			this.sendResponse(socket, { ok: false, error: "Invalid JSON" });
 			return;
 		}
 
@@ -106,44 +143,40 @@ export class DaemonServer {
 			const obj = json as Record<string, unknown> | null;
 			const cmd =
 				obj && typeof obj === "object" && typeof obj.cmd === "string" ? obj.cmd : undefined;
-			const errResponse: DaemonResponse = cmd
-				? {
-						ok: false,
-						error: `Unknown command: ${cmd}`,
-						suggestion: "-> Try: agent-dbg --help",
-					}
-				: {
-						ok: false,
-						error: "Invalid request: must have { cmd: string, args: object }",
-					};
-			socket.write(`${JSON.stringify(errResponse)}\n`);
-			socket.end();
+			this.sendResponse(
+				socket,
+				cmd
+					? {
+							ok: false,
+							error: `Unknown command: ${cmd}`,
+							suggestion: "-> Try: agent-dbg --help",
+						}
+					: {
+							ok: false,
+							error: "Invalid request: must have { cmd: string, args: object }",
+						},
+			);
 			return;
 		}
 		const request: DaemonRequest = parsed.data;
 
 		if (!this.handler) {
-			const errResponse: DaemonResponse = {
+			this.sendResponse(socket, {
 				ok: false,
 				error: "No request handler registered",
-			};
-			socket.write(`${JSON.stringify(errResponse)}\n`);
-			socket.end();
+			});
 			return;
 		}
 
 		this.handler(request)
 			.then((response) => {
-				socket.write(`${JSON.stringify(response)}\n`);
-				socket.end();
+				this.sendResponse(socket, response);
 			})
 			.catch((err) => {
-				const errResponse: DaemonResponse = {
+				this.sendResponse(socket, {
 					ok: false,
 					error: err instanceof Error ? err.message : String(err),
-				};
-				socket.write(`${JSON.stringify(errResponse)}\n`);
-				socket.end();
+				});
 			});
 	}
 
