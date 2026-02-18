@@ -1,4 +1,6 @@
 import type { DaemonRequest, DaemonResponse } from "../protocol/messages.ts";
+import { DaemonLogger } from "./logger.ts";
+import { ensureSocketDir, getDaemonLogPath } from "./paths.ts";
 import { DaemonServer } from "./server.ts";
 import { DebugSession } from "./session.ts";
 
@@ -22,8 +24,16 @@ if (timeoutIdx !== -1) {
 	}
 }
 
-const server = new DaemonServer(session, { idleTimeout: timeout });
-const debugSession = new DebugSession(session);
+ensureSocketDir();
+const daemonLogger = new DaemonLogger(getDaemonLogPath(session));
+daemonLogger.info("daemon.start", `Daemon starting for session "${session}"`, {
+	pid: process.pid,
+	session,
+	timeout,
+});
+
+const server = new DaemonServer(session, { idleTimeout: timeout, logger: daemonLogger });
+const debugSession = new DebugSession(session, { daemonLogger });
 
 server.onRequest(async (req: DaemonRequest): Promise<DaemonResponse> => {
 	switch (req.cmd) {

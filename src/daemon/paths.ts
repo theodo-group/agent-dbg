@@ -22,6 +22,10 @@ export function getLogPath(session: string): string {
 	return join(getSocketDir(), `${session}.cdp.log`);
 }
 
+export function getDaemonLogPath(session: string): string {
+	return join(getSocketDir(), `${session}.daemon.log`);
+}
+
 export function ensureSocketDir(): void {
 	const dir = getSocketDir();
 	if (!existsSync(dir)) {

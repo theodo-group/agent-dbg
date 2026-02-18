@@ -4,6 +4,7 @@ import {
 	DaemonRequestSchema,
 	type DaemonResponse,
 } from "../protocol/messages.ts";
+import type { DaemonLogger } from "./logger.ts";
 import { ensureSocketDir, getLockPath, getSocketPath } from "./paths.ts";
 
 type RequestHandler = (req: DaemonRequest) => Promise<DaemonResponse>;
@@ -16,12 +17,14 @@ export class DaemonServer {
 	private listener: ReturnType<typeof Bun.listen> | null = null;
 	private socketPath: string;
 	private lockPath: string;
+	private logger: DaemonLogger | null;
 
-	constructor(session: string, options: { idleTimeout: number }) {
+	constructor(session: string, options: { idleTimeout: number; logger?: DaemonLogger }) {
 		this.session = session;
 		this.idleTimeout = options.idleTimeout;
 		this.socketPath = getSocketPath(session);
 		this.lockPath = getLockPath(session);
+		this.logger = options.logger ?? null;
 	}
 
 	onRequest(handler: RequestHandler): void {
@@ -72,6 +75,7 @@ export class DaemonServer {
 				},
 				close() {},
 				error(_socket, error) {
+					server.logger?.error("socket.error", error.message);
 					console.error(`[daemon] socket error: ${error.message}`);
 				},
 			},
@@ -149,6 +153,10 @@ export class DaemonServer {
 		}
 		if (this.idleTimeout > 0) {
 			this.idleTimer = setTimeout(() => {
+				this.logger?.info(
+					"daemon.idle",
+					`Idle timeout reached (${this.idleTimeout}s), shutting down`,
+				);
 				this.stop();
 			}, this.idleTimeout * 1000);
 		}

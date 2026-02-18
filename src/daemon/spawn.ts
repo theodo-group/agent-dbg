@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs";
-import { getSocketPath } from "./paths.ts";
+import { existsSync, openSync } from "node:fs";
+import { ensureSocketDir, getDaemonLogPath, getSocketPath } from "./paths.ts";
 
 const POLL_INTERVAL_MS = 50;
 const SPAWN_TIMEOUT_MS = 5000;
@@ -30,11 +30,16 @@ export async function spawnDaemon(
 		spawnArgs.push("--timeout", String(options.timeout));
 	}
 
+	// Redirect daemon stdout/stderr to daemon log file so crashes are captured
+	// even before the DaemonLogger initializes inside the child process.
+	ensureSocketDir();
+	const logFd = openSync(getDaemonLogPath(session), "a");
+
 	const proc = Bun.spawn(spawnArgs, {
 		detached: true,
 		stdin: "ignore",
-		stdout: "ignore",
-		stderr: "ignore",
+		stdout: logFd,
+		stderr: logFd,
 	});
 
 	// Unref so the parent process can exit

@@ -1,4 +1,5 @@
 import type { CdpLogEntry } from "../cdp/logger.ts";
+import type { DaemonLogEntry } from "../daemon/logger.ts";
 
 function formatTime(ts: number): string {
 	const d = new Date(ts);
@@ -107,4 +108,18 @@ export function formatLogEntry(entry: CdpLogEntry): string {
 	const summarizer = eventSummarizers[entry.method];
 	const summary = summarizer ? summarizer(entry) : summarizeParams(entry);
 	return `${time}  <- ${entry.method}${summary ? `  ${summary}` : ""}`;
+}
+
+const levelColors: Record<string, string> = {
+	info: "INFO ",
+	warn: "WARN ",
+	error: "ERROR",
+	debug: "DEBUG",
+};
+
+export function formatDaemonLogEntry(entry: DaemonLogEntry): string {
+	const time = `[${formatTime(entry.ts)}]`;
+	const level = levelColors[entry.level] ?? entry.level.toUpperCase();
+	const data = entry.data ? `  ${truncate(JSON.stringify(entry.data), 120)}` : "";
+	return `${time} ${level} ${entry.event}: ${entry.message}${data}`;
 }

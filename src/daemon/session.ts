@@ -6,7 +6,8 @@ import type { RemoteObject } from "../formatter/values.ts";
 import { formatValue } from "../formatter/values.ts";
 import { RefTable } from "../refs/ref-table.ts";
 import { SourceMapResolver } from "../sourcemap/resolver.ts";
-import { ensureSocketDir, getLogPath } from "./paths.ts";
+import { DaemonLogger } from "./logger.ts";
+import { ensureSocketDir, getDaemonLogPath, getLogPath } from "./paths.ts";
 import {
 	addBlackbox as addBlackboxImpl,
 	listBlackbox as listBlackboxImpl,
@@ -140,7 +141,7 @@ export class DebugSession {
 	cdp: CdpClient | null = null;
 	refs: RefTable = new RefTable();
 	sourceMapResolver: SourceMapResolver = new SourceMapResolver();
-	childProcess: Subprocess<"ignore", "pipe", "pipe"> | null = null;
+	childProcess: Subprocess<"ignore", "ignore", "pipe"> | null = null;
 	state: "idle" | "running" | "paused" = "idle";
 	pauseInfo: PauseInfo | null = null;
 	pausedCallFrames: Protocol.Debugger.CallFrame[] = [];
@@ -157,11 +158,14 @@ export class DebugSession {
 	launchCommand: string[] | null = null;
 	launchOptions: { brk?: boolean; port?: number } | null = null;
 	cdpLogger: CdpLogger;
+	daemonLogger: DaemonLogger;
 
-	constructor(session: string) {
+	constructor(session: string, options?: { daemonLogger?: DaemonLogger }) {
 		this.session = session;
 		ensureSocketDir();
 		this.cdpLogger = new CdpLogger(getLogPath(session));
+		this.daemonLogger =
+			options?.daemonLogger ?? new DaemonLogger(getDaemonLogPath(session));
 	}
 
 	// ── Session lifecycle ─────────────────────────────────────────────
@@ -192,10 +196,15 @@ export class DebugSession {
 
 		const proc = Bun.spawn(spawnArgs, {
 			stdin: "ignore",
-			stdout: "pipe",
+			stdout: "ignore",
 			stderr: "pipe",
 		});
 		this.childProcess = proc;
+
+		this.daemonLogger.info("child.spawn", `Spawned process pid=${proc.pid}`, {
+			pid: proc.pid,
+			command: spawnArgs,
+		});
 
 		// Monitor child process exit in the background
 		this.monitorProcessExit(proc);
@@ -203,6 +212,10 @@ export class DebugSession {
 		// Read stderr to find the inspector URL
 		const wsUrl = await this.readInspectorUrl(proc.stderr);
 		this.wsUrl = wsUrl;
+
+		this.daemonLogger.info("inspector.detected", `Inspector URL: ${wsUrl}`, {
+			wsUrl,
+		});
 
 		// Connect CDP
 		await this.connectCdp(wsUrl);
@@ -741,8 +754,10 @@ export class DebugSession {
 	}
 
 	private async connectCdp(wsUrl: string): Promise<void> {
+		this.daemonLogger.debug("cdp.connecting", `Connecting to ${wsUrl}`);
 		const cdp = await CdpClient.connect(wsUrl, this.cdpLogger);
 		this.cdp = cdp;
+		this.daemonLogger.info("cdp.connected", `CDP connected to ${wsUrl}`);
 
 		// Set up event handlers before enabling domains so we don't miss any events
 		this.setupCdpEventHandlers(cdp);
@@ -871,9 +886,13 @@ export class DebugSession {
 		});
 	}
 
-	private monitorProcessExit(proc: Subprocess<"ignore", "pipe", "pipe">): void {
+	private monitorProcessExit(proc: Subprocess<"ignore", "ignore", "pipe">): void {
 		proc.exited
-			.then(() => {
+			.then((exitCode) => {
+				this.daemonLogger.info("child.exit", `Process exited with code ${exitCode ?? "unknown"}`, {
+					pid: proc.pid,
+					exitCode: exitCode ?? null,
+				});
 				// Child process has exited
 				this.childProcess = null;
 				if (this.cdp) {
@@ -884,7 +903,10 @@ export class DebugSession {
 				this.pauseInfo = null;
 				this.onProcessExit?.();
 			})
-			.catch(() => {
+			.catch((err) => {
+				this.daemonLogger.error("child.exit.error", `Error waiting for process exit: ${err}`, {
+					pid: proc.pid,
+				});
 				// Error waiting for exit, treat as exited
 				this.childProcess = null;
 				this.state = "idle";
@@ -907,13 +929,16 @@ export class DebugSession {
 				if (done) {
 					break;
 				}
-				accumulated += decoder.decode(value, { stream: true });
+				const chunk = decoder.decode(value, { stream: true });
+				accumulated += chunk;
+				this.daemonLogger.debug("child.stderr", chunk.trimEnd());
 
 				const match = INSPECTOR_URL_REGEX.exec(accumulated);
 				if (match?.[1]) {
 					clearTimeout(timeout);
-					// Release the reader so the stream is not locked
-					reader.releaseLock();
+					// Continue draining stderr in the background so proc.exited
+					// can resolve (Bun requires all piped streams to be consumed).
+					this.drainReader(reader);
 					return match[1];
 				}
 			}
@@ -922,6 +947,10 @@ export class DebugSession {
 		}
 
 		clearTimeout(timeout);
+		this.daemonLogger.error("inspector.failed", "Failed to detect inspector URL", {
+			stderr: accumulated.slice(0, 2000),
+			timeoutMs: INSPECTOR_TIMEOUT_MS,
+		});
 		throw new Error(
 			`Failed to detect inspector URL within ${INSPECTOR_TIMEOUT_MS}ms. Stderr: ${accumulated.slice(0, 500)}`,
 		);
@@ -954,5 +983,14 @@ export class DebugSession {
 		}
 
 		return wsUrl;
+	}
+
+	private drainReader(reader: { read(): Promise<{ done: boolean; value?: Uint8Array }> }): void {
+		const pump = (): void => {
+			reader.read().then(({ done }) => {
+				if (!done) pump();
+			}).catch(() => {});
+		};
+		pump();
 	}
 }
