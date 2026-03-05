@@ -54,6 +54,14 @@ export class CdpClient {
 		});
 	}
 
+	/**
+	 * Send an untyped CDP/WebKit command. Use this for protocol methods
+	 * not in the devtools-protocol typings (e.g. WebKit Inspector commands).
+	 */
+	async sendRaw(method: string, params?: Record<string, unknown>): Promise<unknown> {
+		return this.send(method as CdpCommand, params as never);
+	}
+
 	async send<T extends CdpCommand>(
 		method: T,
 		...params: ProtocolMapping.Commands[T]["paramsType"]
@@ -111,13 +119,65 @@ export class CdpClient {
 		}
 	}
 
+	/**
+	 * Wait for a single occurrence of a CDP event.
+	 * Resolves with the event params, rejects on timeout.
+	 */
+	waitFor<T extends CdpEventName>(
+		event: T,
+		opts?: { timeoutMs?: number; filter?: (...args: ProtocolMapping.Events[T]) => boolean },
+	): Promise<ProtocolMapping.Events[T][0]>;
+	waitFor(
+		event: string,
+		opts?: { timeoutMs?: number; filter?: (params: unknown) => boolean },
+	): Promise<unknown>;
+	// biome-ignore lint/suspicious/noExplicitAny: Implementation signature accepts both typed and untyped filter functions
+	waitFor(event: string, opts?: { timeoutMs?: number; filter?: (...args: any[]) => boolean }): Promise<unknown> {
+		const timeoutMs = opts?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+		const filter = opts?.filter;
+
+		return new Promise<unknown>((resolve, reject) => {
+			const handler: AnyHandler = (params: unknown) => {
+				if (filter && !filter(params)) return;
+				cleanup();
+				resolve(params);
+			};
+
+			const timer = setTimeout(() => {
+				cleanup();
+				reject(new Error(`waitFor timed out: ${event} (after ${timeoutMs}ms)`));
+			}, timeoutMs);
+
+			const cleanup = () => {
+				clearTimeout(timer);
+				this.off(event, handler);
+			};
+
+			this.on(event, handler);
+		});
+	}
+
+	/** Set of successfully enabled CDP domain names (e.g. "Debugger", "Runtime") */
+	enabledDomains = new Set<string>();
+
 	async enableDomains(): Promise<void> {
-		await Promise.all([
-			this.send("Debugger.enable"),
-			this.send("Runtime.enable"),
-			this.send("Profiler.enable"),
-			this.send("HeapProfiler.enable"),
-		]);
+		// Required domains — these must succeed
+		await Promise.all([this.send("Debugger.enable"), this.send("Runtime.enable")]);
+		this.enabledDomains.add("Debugger");
+		this.enabledDomains.add("Runtime");
+
+		// Optional domains — may not be supported (e.g. Bun/JavaScriptCore)
+		const optional = ["Profiler", "HeapProfiler"] as const;
+		await Promise.allSettled(
+			optional.map(async (domain) => {
+				try {
+					await this.send(`${domain}.enable` as any);
+					this.enabledDomains.add(domain);
+				} catch {
+					// Domain not supported — skip silently
+				}
+			}),
+		);
 	}
 
 	async runIfWaitingForDebugger(): Promise<void> {
@@ -183,6 +243,7 @@ export class CdpClient {
 			const response = parsed as CdpResponse;
 			const method = this.sentMethods.get(response.id) ?? "unknown";
 			this.sentMethods.delete(response.id);
+
 			this.logger?.logResponse(response.id, method, response.result, response.error);
 
 			const pending = this.pending.get(response.id);
