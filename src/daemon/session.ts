@@ -6,8 +6,10 @@ import type { RemoteObject } from "../formatter/values.ts";
 import { formatValue } from "../formatter/values.ts";
 import { RefTable } from "../refs/ref-table.ts";
 import { SourceMapResolver } from "../sourcemap/resolver.ts";
+import { createAdapter } from "./adapters/index.ts";
 import { DaemonLogger } from "./logger.ts";
 import { ensureSocketDir, getDaemonLogPath, getLogPath } from "./paths.ts";
+import type { RuntimeAdapter } from "./runtime-adapter.ts";
 import {
 	addBlackbox as addBlackboxImpl,
 	listBlackbox as listBlackboxImpl,
@@ -134,7 +136,9 @@ export interface SessionStatus {
 	scriptCount: number;
 }
 
-const INSPECTOR_URL_REGEX = /Debugger listening on (wss?:\/\/\S+)/;
+// Node.js: "Debugger listening on ws://..."
+// Bun:     "  ws://localhost:PORT/ID" (on its own indented line)
+const INSPECTOR_URL_REGEX = /(?:Debugger listening on\s+)?(wss?:\/\/\S+)/;
 const INSPECTOR_TIMEOUT_MS = 5_000;
 
 export class DebugSession {
@@ -157,6 +161,7 @@ export class DebugSession {
 		new Map();
 	launchCommand: string[] | null = null;
 	launchOptions: { brk?: boolean; port?: number } | null = null;
+	adapter: RuntimeAdapter;
 	cdpLogger: CdpLogger;
 	daemonLogger: DaemonLogger;
 
@@ -165,6 +170,13 @@ export class DebugSession {
 		ensureSocketDir();
 		this.cdpLogger = new CdpLogger(getLogPath(session));
 		this.daemonLogger = options?.daemonLogger ?? new DaemonLogger(getDaemonLogPath(session));
+		// Default to NodeAdapter; overridden in launch() when command is known
+		this.adapter = createAdapter(["node"]);
+	}
+
+	/** Detected runtime name — delegates to the adapter */
+	get runtime(): "node" | "bun" | "unknown" {
+		return this.adapter.name;
 	}
 
 	// ── Session lifecycle ─────────────────────────────────────────────
@@ -183,15 +195,19 @@ export class DebugSession {
 
 		this.launchCommand = command;
 		this.launchOptions = options;
+		this.adapter = createAdapter(command);
 
 		const brk = options.brk ?? true;
 		const port = options.port ?? 0;
+
+		// Both Bun and Node.js support --inspect-brk (Bun also has --inspect-wait
+		// but --inspect-brk works better for our pause strategy)
 		const inspectFlag = brk ? `--inspect-brk=${port}` : `--inspect=${port}`;
 
 		// Build the args: inject inspect flag after the runtime (first element)
-		const runtime = command[0] as string;
+		const runtimeBin = command[0] as string;
 		const rest = command.slice(1);
-		const spawnArgs = [runtime, inspectFlag, ...rest];
+		const spawnArgs = [runtimeBin, inspectFlag, ...rest];
 
 		const proc = Bun.spawn(spawnArgs, {
 			stdin: "ignore",
@@ -236,7 +252,23 @@ export class DebugSession {
 		};
 
 		if (this.pauseInfo) {
-			result.pauseInfo = this.pauseInfo;
+			// Source-map translate for display
+			const translated = { ...this.pauseInfo };
+			if (translated.scriptId && translated.line !== undefined) {
+				const resolved = this.resolveOriginalLocation(
+					translated.scriptId,
+					translated.line + 1, // pauseInfo.line is 0-based
+					translated.column ?? 0,
+				);
+				if (resolved) {
+					translated.url = resolved.url;
+					translated.line = resolved.line - 1;
+					if (resolved.column !== undefined) {
+						translated.column = resolved.column - 1;
+					}
+				}
+			}
+			result.pauseInfo = translated;
 		}
 
 		return result;
@@ -652,21 +684,16 @@ export class DebugSession {
 			const settle = () => {
 				if (settled) return;
 				settled = true;
-				clearTimeout(timer);
 				clearInterval(pollTimer);
-				this.cdp?.off("Debugger.paused", handler);
 				this.onProcessExit = null;
 				resolve();
 			};
 
-			const timer = setTimeout(() => {
-				// Don't reject — the process is still running, just not paused yet
-				settle();
-			}, timeoutMs);
-
-			const handler = () => {
-				settle();
-			};
+			// Use waitFor for the event subscription + timeout
+			this.cdp
+				?.waitFor("Debugger.paused", { timeoutMs })
+				.then(() => settle())
+				.catch(() => settle()); // timeout — don't reject, just settle
 
 			// Poll as a fallback in case the event/callback is missed
 			// (e.g., process exits and monitorProcessExit runs before
@@ -677,7 +704,6 @@ export class DebugSession {
 				}
 			}, 100);
 
-			this.cdp?.on("Debugger.paused", handler);
 			// Also resolve if the process exits during execution
 			this.onProcessExit = settle;
 		});
@@ -724,32 +750,7 @@ export class DebugSession {
 	// ── Private helpers ───────────────────────────────────────────────
 
 	private async waitForBrkPause(): Promise<void> {
-		// Give the Debugger.paused event a moment to arrive (older Node.js)
-		if (!this.isPaused()) {
-			await Bun.sleep(100);
-		}
-		// On Node.js v24+, --inspect-brk does not emit Debugger.paused when the
-		// debugger connects after the process is already paused. We request an
-		// explicit pause and then signal Runtime.runIfWaitingForDebugger so the
-		// process starts execution and immediately hits our pause request.
-		if (!this.isPaused() && this.cdp) {
-			await this.cdp.send("Debugger.pause");
-			await this.cdp.send("Runtime.runIfWaitingForDebugger");
-			const deadline = Date.now() + 2_000;
-			while (!this.isPaused() && Date.now() < deadline) {
-				await Bun.sleep(50);
-			}
-		}
-		// On Node.js v24+, the initial --inspect-brk pause lands in an internal
-		// bootstrap module (node:internal/...) rather than the user script.
-		// Resume past internal pauses until we reach user code.
-		let skips = 0;
-		while (this.isPaused() && this.cdp && this.pauseInfo?.url?.startsWith("node:") && skips < 5) {
-			skips++;
-			const waiter = this.createPauseWaiter(5_000);
-			await this.cdp.send("Debugger.resume");
-			await waiter;
-		}
+		return this.adapter.waitForBrkPause(this);
 	}
 
 	private async connectCdp(wsUrl: string): Promise<void> {
@@ -761,13 +762,14 @@ export class DebugSession {
 		// Set up event handlers before enabling domains so we don't miss any events
 		this.setupCdpEventHandlers(cdp);
 
+		// Runtime-specific pre-enable hook (e.g. Bun needs Inspector.enable first)
+		await this.adapter.preEnable(cdp);
+
 		await cdp.enableDomains();
 
 		// Re-apply blackbox patterns if any exist
 		if (this.blackboxPatterns.length > 0) {
-			await cdp.send("Debugger.setBlackboxPatterns", {
-				patterns: this.blackboxPatterns,
-			});
+			await this.adapter.setBlackboxPatterns(cdp, this.blackboxPatterns);
 		}
 
 		// Update state to running if not already paused

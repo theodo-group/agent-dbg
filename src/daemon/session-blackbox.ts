@@ -11,9 +11,7 @@ export async function addBlackbox(session: DebugSession, patterns: string[]): Pr
 		}
 	}
 
-	await session.cdp.send("Debugger.setBlackboxPatterns", {
-		patterns: session.blackboxPatterns,
-	});
+	await session.adapter.setBlackboxPatterns(session.cdp, session.blackboxPatterns);
 
 	return [...session.blackboxPatterns];
 }
@@ -33,9 +31,7 @@ export async function removeBlackbox(session: DebugSession, patterns: string[]):
 		session.blackboxPatterns = session.blackboxPatterns.filter((p) => !patterns.includes(p));
 	}
 
-	await session.cdp.send("Debugger.setBlackboxPatterns", {
-		patterns: session.blackboxPatterns,
-	});
+	await session.adapter.setBlackboxPatterns(session.cdp, session.blackboxPatterns);
 
 	return [...session.blackboxPatterns];
 }

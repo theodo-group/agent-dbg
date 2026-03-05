@@ -188,7 +188,7 @@ export async function getVars(
 			const objectId = scopeObj.objectId;
 			if (!objectId) continue;
 
-			const propsResult = await session.cdp.send("Runtime.getProperties", {
+			const propsResult = await session.adapter.getProperties(session.cdp, {
 				objectId,
 				ownProperties: true,
 				generatePreview: true,
@@ -274,7 +274,7 @@ export async function getProps(
 		propsParams.accessorPropertiesOnly = false;
 	}
 
-	const propsResult = await session.cdp.send("Runtime.getProperties", propsParams);
+	const propsResult = await session.adapter.getProperties(session.cdp, propsParams);
 	const properties = propsResult.result ?? [];
 	const internalProps = options.internal ? (propsResult.internalProperties ?? []) : [];
 

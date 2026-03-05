@@ -209,7 +209,7 @@ export async function buildState(
 						const objectId = scopeObj.objectId;
 						if (!objectId) continue;
 
-						const propsResult = await session.cdp.send("Runtime.getProperties", {
+						const propsResult = await session.adapter.getProperties(session.cdp, {
 							objectId,
 							ownProperties: true,
 							generatePreview: true,

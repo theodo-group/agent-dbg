@@ -1,4 +1,3 @@
-import type Protocol from "devtools-protocol/types/protocol.js";
 import type { DebugSession } from "./session.ts";
 
 export async function setBreakpoint(
@@ -20,6 +19,7 @@ export async function setBreakpoint(
 	let actualColumn: number | undefined =
 		options?.column !== undefined ? options.column - 1 : undefined; // user column is 1-based
 	let actualFile = file;
+	let generatedScriptId: string | null = null;
 
 	if (!options?.urlRegex) {
 		const generated = session.sourceMapResolver.toGenerated(file, line, actualColumn ?? 0);
@@ -28,6 +28,7 @@ export async function setBreakpoint(
 			originalLine = line;
 			actualLine = generated.line;
 			actualColumn = generated.column;
+			generatedScriptId = generated.scriptId;
 			// Find the URL of the generated script
 			const scriptInfo = session.scripts.get(generated.scriptId);
 			if (scriptInfo) {
@@ -36,33 +37,32 @@ export async function setBreakpoint(
 		}
 	}
 
-	const params: Protocol.Debugger.SetBreakpointByUrlRequest = {
-		lineNumber: actualLine - 1, // CDP uses 0-based lines
-	};
-	if (actualColumn !== undefined) {
-		params.columnNumber = actualColumn;
-	}
-
 	let url: string | null = null;
+	let urlRegex: string | undefined;
 	if (options?.urlRegex) {
-		// Use urlRegex directly without resolving file path
-		params.urlRegex = options.urlRegex;
+		urlRegex = options.urlRegex;
 	} else {
 		url = session.findScriptUrl(actualFile);
-		if (url) {
-			params.url = url;
-		} else {
-			// Fall back to urlRegex to match partial paths
-			params.urlRegex = `${actualFile.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`;
+		if (!url && !generatedScriptId) {
+			urlRegex = `${actualFile.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`;
 		}
 	}
-	if (condition) {
-		params.condition = condition;
-	}
 
-	const r = await session.cdp.send("Debugger.setBreakpointByUrl", params);
+	const r = await session.adapter.setBreakpointByLocation(session.cdp, {
+		file,
+		line: actualLine,
+		column: actualColumn,
+		condition,
+		url: url ?? undefined,
+		urlRegex,
+		scriptId: generatedScriptId ?? undefined,
+		scripts: session.scripts,
+	});
 
-	const loc = r.locations[0];
+	const breakpointId = r.breakpointId;
+	const loc = r.location;
+	if (!url) url = r.url ?? session.findScriptUrl(actualFile);
+
 	const resolvedUrl = originalFile ?? url ?? file;
 	const resolvedLine = originalLine ?? (loc ? loc.lineNumber + 1 : line); // Convert back to 1-based
 	const resolvedColumn = loc?.columnNumber;
@@ -90,7 +90,7 @@ export async function setBreakpoint(
 		meta.urlRegex = options.urlRegex;
 	}
 
-	const ref = session.refs.addBreakpoint(r.breakpointId, meta);
+	const ref = session.refs.addBreakpoint(breakpointId, meta);
 
 	const location: { url: string; line: number; column?: number } = {
 		url: resolvedUrl,
@@ -333,21 +333,26 @@ async function reEnableBreakpoint(
 
 	const builtCondition = session.buildBreakpointCondition(condition, hitCount);
 
-	const bpParams: Protocol.Debugger.SetBreakpointByUrlRequest = {
-		lineNumber: line - 1,
-	};
-
-	if (urlRegex) {
-		bpParams.urlRegex = urlRegex;
-	} else if (url) {
-		bpParams.url = url;
+	// Find scriptId for Bun adapter which needs it
+	let scriptId: string | undefined;
+	if (url) {
+		for (const [sid, info] of session.scripts) {
+			if (info.url === url) {
+				scriptId = sid;
+				break;
+			}
+		}
 	}
 
-	if (builtCondition) {
-		bpParams.condition = builtCondition;
-	}
-
-	const r = await session.cdp.send("Debugger.setBreakpointByUrl", bpParams);
+	const r = await session.adapter.setBreakpointByLocation(session.cdp, {
+		file: (url ?? urlRegex ?? "") as string,
+		line,
+		condition: builtCondition,
+		url,
+		urlRegex,
+		scriptId,
+		scripts: session.scripts,
+	});
 
 	// Re-create the ref entry in the ref table
 	const type = (meta.type as string) === "LP" ? "LP" : "BP";
@@ -390,15 +395,7 @@ export async function getBreakableLocations(
 		throw new Error(`No scriptId found for "${file}"`);
 	}
 
-	const r = await session.cdp.send("Debugger.getPossibleBreakpoints", {
-		start: { scriptId, lineNumber: startLine - 1 },
-		end: { scriptId, lineNumber: endLine },
-	});
-
-	return r.locations.map((loc) => ({
-		line: loc.lineNumber + 1, // Convert to 1-based
-		column: (loc.columnNumber ?? 0) + 1, // Convert to 1-based
-	}));
+	return session.adapter.getBreakableLocations(session.cdp, scriptId, startLine, endLine);
 }
 
 export async function setLogpoint(
@@ -423,19 +420,33 @@ export async function setLogpoint(
 		logExpr = `${logExpr}, false`;
 	}
 
-	const lpParams: Protocol.Debugger.SetBreakpointByUrlRequest = {
-		lineNumber: line - 1, // CDP uses 0-based lines
-		condition: logExpr,
-	};
-	if (url) {
-		lpParams.url = url;
-	} else {
-		lpParams.urlRegex = `${file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`;
+	let urlRegex: string | undefined;
+	if (!url) {
+		urlRegex = `${file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`;
 	}
 
-	const r = await session.cdp.send("Debugger.setBreakpointByUrl", lpParams);
+	// Find scriptId for Bun adapter
+	let scriptId: string | undefined;
+	if (url) {
+		for (const [sid, info] of session.scripts) {
+			if (info.url === url) {
+				scriptId = sid;
+				break;
+			}
+		}
+	}
 
-	const loc = r.locations[0];
+	const r = await session.adapter.setBreakpointByLocation(session.cdp, {
+		file,
+		line,
+		condition: logExpr,
+		url: url ?? undefined,
+		urlRegex,
+		scriptId,
+		scripts: session.scripts,
+	});
+
+	const loc = r.location;
 	const resolvedUrl = url ?? file;
 	const resolvedLine = loc ? loc.lineNumber + 1 : line;
 	const resolvedColumn = loc?.columnNumber;
@@ -478,7 +489,7 @@ export async function setExceptionPause(
 
 	// CDP only supports "none", "all", and "uncaught".
 	// Map "caught" to "all" since CDP does not have a "caught-only" mode.
-	let cdpState: Protocol.Debugger.SetPauseOnExceptionsRequest["state"];
+	let cdpState: "none" | "all" | "uncaught";
 	switch (mode) {
 		case "all":
 			cdpState = "all";

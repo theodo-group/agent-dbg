@@ -66,8 +66,12 @@ export function formatSource(lines: SourceLine[]): string {
 
 		// Add column indicator under current line
 		if (line.isCurrent && trimmed.caretOffset !== undefined && trimmed.caretOffset >= 0) {
-			const gutterWidth = numWidth + 4; // marker(2) + space(1) + numWidth + │(1)
-			result.push(`${" ".repeat(gutterWidth)}${" ".repeat(trimmed.caretOffset)}^`);
+			const gutter = " ".repeat(numWidth + 4); // marker(2) + space(1) + numWidth + │(1)
+			// Preserve tabs from source so ^ aligns in terminal
+			const indent = trimmed.text
+				.slice(0, trimmed.caretOffset)
+				.replace(/[^\t]/g, " ");
+			result.push(`${gutter}${indent}^`);
 		}
 	}
 	return result.join("\n");
