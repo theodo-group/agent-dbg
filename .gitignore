@@ -32,3 +32,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# DAP test fixture build artifacts
+tests/fixtures/dap/hello
+tests/fixtures/dap/*.dSYM
