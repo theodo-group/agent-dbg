@@ -1,8 +1,24 @@
 # agent-dbg
 
-Node.js debugger CLI built for AI agents. Fast, token-efficient, no fluff.
+Debugger CLI built for AI agents. Fast, token-efficient, no fluff.
 
 **Why?** Agents waste tokens on print-debugging. A real debugger gives precise state inspection in minimal output — variables, stack, breakpoints — all via short `@ref` handles.
+
+Inspired by Vercel's [agent-browser](https://github.com/vercel-labs/agent-browser) CLI — the same `@ref` concept, applied to debugging instead of browsing.
+
+## Supported Runtimes & Languages
+
+| Runtime | Language | Status | Protocol |
+|---------|----------|--------|----------|
+| Node.js | JavaScript | Supported | V8 Inspector (CDP) |
+| Node.js + tsx/ts-node | TypeScript | Supported | V8 Inspector (CDP) + Source Maps |
+| Bun | JavaScript / TypeScript | Supported | WebKit Inspector (JSC) |
+| LLDB | C / C++ / Rust / Swift | Supported | DAP (Debug Adapter Protocol) |
+| Deno | JavaScript / TypeScript | Planned | V8 Inspector (CDP) |
+| Python (debugpy) | Python | Planned | DAP |
+| Go (delve) | Go | Planned | DAP |
+
+agent-dbg auto-detects the runtime from the launch command and uses the appropriate protocol adapter. For native languages, use `--runtime lldb` to select the DAP adapter.
 
 ## Install
 
@@ -10,7 +26,7 @@ Requires [Bun](https://bun.sh).
 
 ```bash
 bun install --global agent-dbg
-npx skills add theodo-group/agent-dbg # Install skills
+npx skills add theodo-group/agent-dbg # Install Claude Code skill
 ```
 
 ## Example
@@ -23,17 +39,17 @@ Paused at ./src/app.ts:0:1
 BP#1 set at src/app.ts:19
 
 > agent-dbg continue
-⏸ Paused at ./src/app.ts:19:21 (other)
+Paused at ./src/app.ts:19:21 (other)
 
 Source:
-   16│
-   17│const alice: Person = { name: "Alice", age: 30 };
-   18│const greeting: string = greet(alice);
- → 19│const sum: number = add(2, 3);
+   16|
+   17|const alice: Person = { name: "Alice", age: 30 };
+   18|const greeting: string = greet(alice);
+ > 19|const sum: number = add(2, 3);
                           ^
-   20│console.log(greeting);
-   21│console.log("Sum:", sum);
-   22│
+   20|console.log(greeting);
+   21|console.log("Sum:", sum);
+   22|
 
 Locals:
 @v1  greet     Function greet(person)
@@ -51,33 +67,30 @@ Breakpoints: 1 active
 ## Usage
 
 ```bash
+# Node.js
 agent-dbg launch --brk node app.js
-# Session "default" started (pid 12345)
-# Paused at app.js:1:1
 
+# TypeScript (via tsx)
+agent-dbg launch --brk tsx src/app.ts
+
+# Bun
+agent-dbg launch --brk bun app.ts
+
+# C/C++ (via LLDB)
+agent-dbg launch --brk --runtime lldb ./my_program
+
+# Attach to a running process (any runtime with --inspect)
+agent-dbg attach 9229
+
+# Debug loop
 agent-dbg break src/handler.ts:42
-# BP#1 src/handler.ts:42
-
 agent-dbg continue
-# Paused at src/handler.ts:42:5 (breakpoint)
-
 agent-dbg vars
-# @v1  x      42
-# @v2  name   "alice"
-# @v3  opts   {timeout: 3000}
-
 agent-dbg props @v3
-# @o1  timeout  3000
-
 agent-dbg eval "x + 1"
-# 43
-
 agent-dbg step over
-# Paused at src/handler.ts:43:5 (step)
-
 agent-dbg set @v1 100
-# @v1 changed to 100
-
+agent-dbg hotpatch src/handler.ts   # live-edit from disk (JS/TS only)
 agent-dbg stop
 ```
 
@@ -88,8 +101,31 @@ agent-dbg stop
 | Session | `launch`, `attach`, `stop`, `status`, `sessions` |
 | Execution | `continue`, `step [over\|into\|out]`, `pause`, `run-to`, `restart-frame` |
 | Inspection | `state`, `vars`, `stack`, `eval`, `props`, `source`, `scripts`, `search`, `console`, `exceptions` |
-| Breakpoints | `break`, `break-rm`, `break-ls`, `break-toggle`, `breakable`, `logpoint`, `catch` |
+| Breakpoints | `break`, `break-rm`, `break-ls`, `break-toggle`, `breakable`, `logpoint`, `catch`, `break-fn` (DAP only) |
 | Mutation | `set`, `set-return`, `hotpatch` |
 | Blackbox | `blackbox`, `blackbox-ls`, `blackbox-rm` |
 
 Run `agent-dbg --help` or `agent-dbg --help-agent` for the full reference.
+
+## Architecture
+
+```
+CLI (stateless)  -->  Unix socket IPC  -->  Daemon (per session)
+                                              |
+                                     DebugSession / DapSession
+                                       /                \
+                              CDP path (JS)          DAP path (native)
+                                 |                       |
+                           RuntimeAdapter            DapClient
+                            /         \            (stdin/stdout)
+                      NodeAdapter    BunAdapter         |
+                      (CDP/V8)    (WebKit/JSC)     lldb-dap / etc.
+                            \         /
+                          CdpClient (WebSocket)
+                                 |
+                          V8/JSC Inspector
+```
+
+The daemon manages two session types:
+- **DebugSession** (CDP) — for JavaScript runtimes (Node.js, Bun). Uses `RuntimeAdapter` to handle protocol differences between V8 and JSC.
+- **DapSession** (DAP) — for native debuggers (LLDB, etc.). Communicates with a debug adapter over stdin/stdout using the Debug Adapter Protocol.

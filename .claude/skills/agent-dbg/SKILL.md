@@ -1,26 +1,42 @@
 ---
 name: agent-dbg
 description: >
-  Debug Node.js/TypeScript/JavaScript applications using the agent-dbg CLI debugger.
+  Debug applications using the agent-dbg CLI debugger.
+  Supports Node.js (V8/CDP), Bun (WebKit/JSC), and native code via LLDB (DAP).
   Use when: (1) investigating runtime bugs by stepping through code, (2) inspecting
   variable values at specific execution points, (3) setting breakpoints and conditional
   breakpoints, (4) evaluating expressions in a paused context, (5) hot-patching code
-  without restarting, (6) debugging test failures by attaching to a running process,
-  (7) any task where understanding runtime behavior requires a debugger.
+  without restarting (JS/TS), (6) debugging test failures by attaching to a running process,
+  (7) debugging C/C++/Rust/Swift with LLDB, (8) any task where understanding runtime
+  behavior requires a debugger.
   Triggers: "debug this", "set a breakpoint", "step through", "inspect variables",
-  "why is this value wrong", "trace execution", "attach debugger", "runtime error".
+  "why is this value wrong", "trace execution", "attach debugger", "runtime error",
+  "segfault", "core dump".
 ---
 
 # agent-dbg Debugger
 
-`agent-dbg` is a CLI debugger for Node.js wrapping the V8 Inspector (CDP). It uses short `@refs` for all entities -- use them instead of long IDs.
+`agent-dbg` is a CLI debugger that supports **Node.js** (V8/CDP), **Bun** (WebKit/JSC), and **native code** (C/C++/Rust/Swift via LLDB/DAP). It uses short `@refs` for all entities -- use them instead of long IDs.
+
+## Supported Runtimes
+
+| Runtime | Language | Launch example |
+|---------|----------|----------------|
+| Node.js | JavaScript | `agent-dbg launch --brk node app.js` |
+| tsx / ts-node | TypeScript | `agent-dbg launch --brk tsx src/app.ts` |
+| Bun | JavaScript / TypeScript | `agent-dbg launch --brk bun app.ts` |
+| LLDB | C / C++ / Rust / Swift | `agent-dbg launch --brk --runtime lldb ./program` |
+
+The runtime is auto-detected from the launch command for JS runtimes. For native code, use `--runtime lldb`.
 
 ## Core Debug Loop
 
 ```bash
 # 1. Launch with breakpoint at first line
 agent-dbg launch --brk node app.js
-# Or attach to a running node process with the --inspect flag
+# Or: agent-dbg launch --brk bun app.ts
+# Or: agent-dbg launch --brk --runtime lldb ./my_program
+# Or attach to a running process with the --inspect flag
 agent-dbg attach 9229
 
 # 2. Set breakpoints at suspicious locations
@@ -35,10 +51,10 @@ agent-dbg state
 
 # 5. Drill into values
 agent-dbg props @v1              # expand object
-agent-dbg props @v1 --depth 3    # expand nested 3 levels
-agent-dbg eval "items.filter(x => x.active)"
+agent-dbg props @v1 --depth 3   # expand nested 3 levels
+agent-dbg eval "x + 1"
 
-# 6. Fix and verify
+# 6. Fix and verify (JS/TS only)
 agent-dbg set count 0            # change variable
 agent-dbg hotpatch src/utils.js  # live-edit (reads file from disk)
 agent-dbg continue               # verify fix
@@ -58,12 +74,24 @@ agent-dbg step over                               # advance one line
 agent-dbg state                                   # see new state
 ```
 
+### Native code debugging (C/C++/Rust)
+```bash
+agent-dbg launch --brk --runtime lldb ./my_program
+agent-dbg break main.c:42
+agent-dbg break-fn main                          # function breakpoint (DAP only)
+agent-dbg continue
+agent-dbg vars                                    # inspect locals
+agent-dbg eval "array[i]"                         # evaluate expression
+agent-dbg step into                               # step into function
+```
+
 ### Attach to running/test process
 ```bash
-# Start node with inspector
+# Start with inspector enabled
 node --inspect app.js
-# Or attach by PID
-agent-dbg attach 12345
+# Or: bun --inspect app.ts
+# Then attach
+agent-dbg attach 9229
 agent-dbg state
 ```
 
@@ -101,6 +129,7 @@ Refs `@v`/`@f` reset on each pause. `BP#`/`LP#` persist until removed.
 
 - `--json` -- machine-readable JSON output on any command
 - `--session NAME` -- target a specific session (default: "default")
+- `--runtime NAME` -- select debug adapter (e.g. `lldb` for native code)
 - `--generated` -- bypass source maps, show compiled JS (on state/source/stack)
 
 ## Command Reference
@@ -111,8 +140,9 @@ See [references/commands.md](references/commands.md) for full command details an
 
 - `agent-dbg state` after stepping always shows location + source + locals -- usually enough context
 - `agent-dbg state -c` for source only, `-v` for vars only, `-s` for stack only -- save tokens
-- `agent-dbg eval` supports `await` -- useful for async inspection
+- `agent-dbg eval` supports `await` -- useful for async inspection (JS/TS)
 - `agent-dbg blackbox "node_modules/**"` -- skip stepping into dependencies
-- `agent-dbg hotpatch file` reads the file from disk -- edit the file first, then hotpatch
+- `agent-dbg hotpatch file` reads the file from disk -- edit the file first, then hotpatch (JS/TS only)
+- `agent-dbg break-fn funcName` -- function breakpoints work with DAP runtimes (LLDB)
 - Execution commands (`continue`, `step`, `pause`, `run-to`) auto-return status
 - `agent-dbg stop` kills the debugged process and daemon

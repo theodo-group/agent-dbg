@@ -14,6 +14,7 @@
 
 ```bash
 agent-dbg launch [--brk] <command...>     # Start + attach debugger (--brk pauses at first line)
+agent-dbg launch --brk --runtime lldb ./program  # Native debugging via LLDB (DAP)
 agent-dbg attach <pid|ws-url|port>        # Attach to running process
 agent-dbg stop                            # Kill process + daemon
 agent-dbg sessions [--cleanup]            # List active sessions
@@ -125,6 +126,8 @@ agent-dbg break-toggle all                # Disable/enable all
 agent-dbg breakable src/app.ts:10-50      # List valid breakpoint locations
 agent-dbg logpoint src/app.ts:20 "x=${x}" # Log without pausing
 agent-dbg logpoint src/app.ts:20 "x=${x}" --condition "x > 0"
+agent-dbg break-fn <name>                  # Function breakpoint (DAP runtimes only)
+agent-dbg break-fn main --condition "argc > 1"
 agent-dbg catch all                       # Pause on all exceptions
 agent-dbg catch uncaught                  # Pause on uncaught only
 agent-dbg catch none                      # Don't pause on exceptions
@@ -167,6 +170,7 @@ agent-dbg sourcemap --disable             # Disable resolution globally
 
 ```bash
 --session NAME                       # Target session (default: "default")
+--runtime NAME                       # Debug adapter: lldb, codelldb, etc. (for native debugging)
 --json                               # JSON output
 --color                              # Enable ANSI colors
 --help-agent                         # LLM-optimized reference card
