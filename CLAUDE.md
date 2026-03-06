@@ -1,12 +1,13 @@
-# agent-dbg — Node.js Debugger CLI for AI Agents
+# agent-dbg — Debugger CLI for AI Agents
 
 ## Project Overview
-CLI debugger for Node.js built with Bun, optimized for AI agent consumption.
-See `agent-dbg-spec.md` for full specification, `PROGRESS.md` for implementation status.
+CLI debugger built with Bun, optimized for AI agent consumption.
+Supports Node.js (CDP), Bun (JSC/WebKit), and native code via LLDB (DAP).
+See `SPEC.md` for full specification, `PROGRESS.md` for implementation status.
 
 ## Tech Stack
 - **Runtime**: Bun (compiled to standalone binary via `bun build --compile`)
-- **Language**: TypeScript (strict mode)
+- **Language**: TypeScript (strict mode, `noUncheckedIndexedAccess`)
 - **Linting/Formatting**: Biome
 - **Testing**: bun:test
 - **Validation**: Zod v4 (mini)
@@ -15,16 +16,21 @@ See `agent-dbg-spec.md` for full specification, `PROGRESS.md` for implementation
 ## Project Structure
 ```
 src/
-  cli/          # CLI argument parsing, command routing
+  cli/          # CLI argument parsing, command routing, flag utilities
   daemon/       # Background daemon process, Unix socket server
+    adapters/   # RuntimeAdapter implementations (NodeAdapter, BunAdapter)
   cdp/          # Chrome DevTools Protocol WebSocket client
+  dap/          # Debug Adapter Protocol client (LLDB, etc.)
   refs/         # @ref system (mapping short refs to V8 IDs)
   formatter/    # Output formatting (variables, source, stack traces)
   commands/     # Command implementations (break, step, eval, etc.)
   protocol/     # CLI-to-daemon JSON protocol types
+  sourcemap/    # Source map resolution
+  util/         # Shared utilities (escapeRegex, etc.)
+  constants.ts  # Centralized timeout/limit constants
 tests/
   unit/         # Unit tests
-  integration/  # Integration tests
+  integration/  # Integration tests (node/, bun/, lldb/, shared/)
   fixtures/     # Test fixture scripts
 ```
 
@@ -34,6 +40,7 @@ tests/
 - `bun run build` — compile standalone binary
 - `bun run lint` — lint with biome
 - `bun run format` — format with biome
+- `bun run typecheck` — type check source files
 
 ## Guidelines
 - Use Bun APIs over Node.js equivalents (WebSocket, Bun.serve, Bun.$, etc.)
@@ -41,3 +48,9 @@ tests/
 - Every error should suggest the next valid command
 - Keep output compact — one entity per line where possible
 - Use @refs for all inspectable entities in output
+- Use `parseIntFlag()` from `src/cli/parse-flag.ts` for integer CLI flags (NaN-safe)
+- Use `parseFileLine()` / `parseFileLineColumn()` from `src/cli/parse-target.ts` for file:line parsing
+- Use `escapeRegex()` from `src/util/escape-regex.ts` for CDP urlRegex patterns
+- Use `formatTimestamp()` from `src/formatter/timestamp.ts` for time display
+- Import timeout/limit values from `src/constants.ts` — do not hardcode magic numbers
+- Adding a command: create `src/commands/<name>.ts`, register in `src/main.ts`, handle in `src/daemon/entry.ts`, add to help in `src/cli/parser.ts`
