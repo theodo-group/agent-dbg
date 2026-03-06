@@ -999,6 +999,9 @@ export class DebugSession {
 			stderr: accumulated.slice(0, 2000),
 			timeoutMs: INSPECTOR_TIMEOUT_MS,
 		});
+		// Kill the child process to avoid zombies when inspector detection fails
+		this.childProcess?.kill();
+		this.childProcess = null;
 		throw new Error(
 			`Failed to detect inspector URL within ${INSPECTOR_TIMEOUT_MS}ms. Stderr: ${accumulated.slice(0, 500)}`,
 		);

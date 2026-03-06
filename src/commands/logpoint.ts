@@ -1,3 +1,4 @@
+import { parseFileLine } from "../cli/parse-target.ts";
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
 import { shortPath } from "../formatter/path.ts";
@@ -18,21 +19,13 @@ registerCommand("logpoint", async (args) => {
 		return 1;
 	}
 
-	// Parse file:line from the target
-	const lastColon = target.lastIndexOf(":");
-	if (lastColon === -1 || lastColon === 0) {
+	const parsed = parseFileLine(target);
+	if (!parsed) {
 		console.error(`Invalid logpoint target: "${target}"`);
 		console.error('  -> Try: agent-dbg logpoint src/app.ts:42 "x =", x');
 		return 1;
 	}
-
-	const file = target.slice(0, lastColon);
-	const line = parseInt(target.slice(lastColon + 1), 10);
-	if (Number.isNaN(line) || line <= 0) {
-		console.error(`Invalid line number in "${target}"`);
-		console.error('  -> Try: agent-dbg logpoint src/app.ts:42 "x =", x');
-		return 1;
-	}
+	const { file, line } = parsed;
 
 	// Template is the first positional argument (after the subcommand)
 	const template = args.positionals[0];

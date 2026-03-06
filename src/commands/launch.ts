@@ -42,7 +42,7 @@ registerCommand("launch", async (args) => {
 		pid: number;
 		wsUrl: string;
 		paused: boolean;
-		pauseInfo?: { reason: string; url?: string; line?: number };
+		pauseInfo?: { reason: string; url?: string; line?: number; column?: number };
 	};
 
 	if (args.global.json) {

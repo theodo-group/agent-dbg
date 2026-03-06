@@ -4,6 +4,7 @@ export interface GlobalFlags {
 	color: boolean;
 	helpAgent: boolean;
 	help: boolean;
+	version: boolean;
 }
 
 export interface ParsedArgs {

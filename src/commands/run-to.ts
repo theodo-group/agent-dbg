@@ -1,3 +1,4 @@
+import { parseFileLine } from "../cli/parse-target.ts";
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
 import type { StateSnapshot } from "../daemon/session.ts";
@@ -12,8 +13,6 @@ registerCommand("run-to", async (args) => {
 		return 1;
 	}
 
-	// Parse file:line from subcommand
-	// e.g., "agent-dbg run-to src/file.ts:42" -> subcommand = "src/file.ts:42"
 	const target = args.subcommand ?? args.positionals[0];
 	if (!target) {
 		console.error("No target specified");
@@ -21,20 +20,13 @@ registerCommand("run-to", async (args) => {
 		return 1;
 	}
 
-	const lastColon = target.lastIndexOf(":");
-	if (lastColon === -1 || lastColon === 0) {
+	const parsed = parseFileLine(target);
+	if (!parsed) {
 		console.error(`Invalid target format: "${target}"`);
 		console.error("  -> Expected: <file>:<line>");
 		return 1;
 	}
-
-	const file = target.slice(0, lastColon);
-	const line = parseInt(target.slice(lastColon + 1), 10);
-	if (Number.isNaN(line) || line <= 0) {
-		console.error(`Invalid line number in "${target}"`);
-		console.error("  -> Expected: <file>:<line>");
-		return 1;
-	}
+	const { file, line } = parsed;
 
 	const client = new DaemonClient(session);
 	const response = await client.request("run-to", { file, line });

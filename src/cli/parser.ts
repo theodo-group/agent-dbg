@@ -1,7 +1,7 @@
 import { registry } from "./registry.ts";
 import type { GlobalFlags, ParsedArgs } from "./types.ts";
 
-const GLOBAL_FLAGS = new Set(["session", "json", "color", "help-agent", "help"]);
+const GLOBAL_FLAGS = new Set(["session", "json", "color", "help-agent", "help", "version"]);
 const BOOLEAN_FLAGS = new Set([
 	"json",
 	"color",
@@ -33,6 +33,7 @@ const BOOLEAN_FLAGS = new Set([
 	"cleanup",
 	"disable",
 	"generated",
+	"version",
 ]);
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -95,6 +96,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
 			const key = arg.slice(1);
 			const shortMap: Record<string, string> = {
 				v: "vars",
+				V: "version",
 				s: "stack",
 				b: "breakpoints",
 				c: "code",
@@ -118,6 +120,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
 		color: flags.color === true,
 		helpAgent: flags["help-agent"] === true,
 		help: flags.help === true,
+		version: flags.version === true,
 	};
 
 	// Remove global flags from flags map
@@ -134,6 +137,11 @@ export async function run(args: ParsedArgs): Promise<number> {
 		return 0;
 	}
 
+	if (args.global.version) {
+		printVersion();
+		return 0;
+	}
+
 	if (!args.command || args.global.help) {
 		printHelp();
 		return args.command ? 0 : 1;
@@ -141,8 +149,13 @@ export async function run(args: ParsedArgs): Promise<number> {
 
 	const handler = registry.get(args.command);
 	if (!handler) {
+		const suggestion = suggestCommand(args.command);
 		console.error(`✗ Unknown command: ${args.command}`);
-		console.error("  → Try: agent-dbg --help");
+		if (suggestion) {
+			console.error(`  → Did you mean: agent-dbg ${suggestion}`);
+		} else {
+			console.error("  → Try: agent-dbg --help");
+		}
 		return 1;
 	}
 
@@ -150,9 +163,48 @@ export async function run(args: ParsedArgs): Promise<number> {
 		return await handler(args);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
-		console.error(`✗ ${message}`);
+		if (args.global.json) {
+			console.log(JSON.stringify({ ok: false, error: message }));
+		} else {
+			console.error(`✗ ${message}`);
+		}
 		return 1;
 	}
+}
+
+function printVersion(): void {
+	// Read version from package.json at build time via Bun's import
+	const pkg = require("../../package.json");
+	console.log(`agent-dbg ${pkg.version}`);
+}
+
+function suggestCommand(input: string): string | null {
+	let bestMatch: string | null = null;
+	let bestScore = 3; // max edit distance to suggest
+	for (const name of registry.keys()) {
+		const dist = editDistance(input, name);
+		if (dist < bestScore) {
+			bestScore = dist;
+			bestMatch = name;
+		}
+	}
+	return bestMatch;
+}
+
+function editDistance(a: string, b: string): number {
+	const m = a.length;
+	const n = b.length;
+	// Use two rows instead of full matrix to avoid non-null assertions
+	let prev = Array.from({ length: n + 1 }, (_, j) => j);
+	for (let i = 1; i <= m; i++) {
+		const curr = [i];
+		for (let j = 1; j <= n; j++) {
+			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+			curr[j] = Math.min((prev[j] ?? 0) + 1, (curr[j - 1] ?? 0) + 1, (prev[j - 1] ?? 0) + cost);
+		}
+		prev = curr;
+	}
+	return prev[n] ?? m;
 }
 
 function printHelp(): void {
@@ -228,7 +280,8 @@ Global flags:
   --json                           JSON output
   --color                          ANSI colors
   --help-agent                     LLM reference card
-  --help                           Show this help`);
+  --help                           Show this help
+  --version                        Show version`);
 }
 
 function printHelpAgent(): void {

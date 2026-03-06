@@ -1,37 +1,7 @@
+import { parseFileLineColumn } from "../cli/parse-target.ts";
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
 import { shortPath } from "../formatter/path.ts";
-
-function parseFileLineColumn(
-	target: string,
-): { file: string; line: number; column?: number } | null {
-	// Match file:line:column or file:line
-	// Walk backwards to find the last two colon-separated numbers
-	const lastColon = target.lastIndexOf(":");
-	if (lastColon === -1 || lastColon === 0) return null;
-
-	const afterLast = target.slice(lastColon + 1);
-	const maybeNum = parseInt(afterLast, 10);
-	if (Number.isNaN(maybeNum) || maybeNum <= 0) return null;
-
-	const beforeLast = target.slice(0, lastColon);
-	const secondColon = beforeLast.lastIndexOf(":");
-	if (secondColon > 0) {
-		const afterSecond = beforeLast.slice(secondColon + 1);
-		const maybeLine = parseInt(afterSecond, 10);
-		if (!Number.isNaN(maybeLine) && maybeLine > 0) {
-			// file:line:column
-			return {
-				file: beforeLast.slice(0, secondColon),
-				line: maybeLine,
-				column: maybeNum,
-			};
-		}
-	}
-
-	// file:line
-	return { file: beforeLast, line: maybeNum };
-}
 
 registerCommand("break", async (args) => {
 	const session = args.global.session;

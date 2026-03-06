@@ -16,6 +16,7 @@ registerCommand("status", async (args) => {
 
 	if (!response.ok) {
 		console.error(`${response.error}`);
+		if (response.suggestion) console.error(`  ${response.suggestion}`);
 		return 1;
 	}
 

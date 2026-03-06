@@ -1,4 +1,4 @@
-import { existsSync, openSync, readFileSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync } from "node:fs";
 import { DaemonClient } from "./client.ts";
 import { ensureSocketDir, getDaemonLogPath, getSocketPath } from "./paths.ts";
 
@@ -42,6 +42,9 @@ export async function spawnDaemon(
 		stdout: logFd,
 		stderr: logFd,
 	});
+
+	// Close the fd in the parent — the child process has its own copy
+	closeSync(logFd);
 
 	// Unref so the parent process can exit
 	proc.unref();
