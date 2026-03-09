@@ -149,6 +149,9 @@ import {
 } from "../constants.ts";
 
 const INSPECTOR_URL_REGEX = /(?:Debugger listening on\s+)?(wss?:\/\/\S+)/;
+// Bun wraps the inspector URL in ANSI bold codes — strip them from the captured URL
+const ESC = String.fromCharCode(0x1b);
+const ANSI_RE = new RegExp(`${ESC}\\[[0-9;]*m`, "g");
 
 export class DebugSession {
 	cdp: CdpClient | null = null;
@@ -1013,7 +1016,7 @@ export class DebugSession {
 					// Continue draining stderr in the background so proc.exited
 					// can resolve (Bun requires all piped streams to be consumed).
 					this.drainReader(reader);
-					return match[1];
+					return match[1].replace(ANSI_RE, "");
 				}
 			}
 		} catch {

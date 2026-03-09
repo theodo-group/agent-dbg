@@ -1,6 +1,7 @@
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
 import type { StateSnapshot } from "../daemon/session.ts";
+import { shouldEnableColor } from "../formatter/color.ts";
 import { printState } from "./print-state.ts";
 
 registerCommand("pause", async (args) => {
@@ -26,7 +27,7 @@ registerCommand("pause", async (args) => {
 	if (args.global.json) {
 		console.log(JSON.stringify(data, null, 2));
 	} else {
-		printState(data);
+		printState(data, { color: shouldEnableColor(args.global.color) });
 	}
 
 	return 0;

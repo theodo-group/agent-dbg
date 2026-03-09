@@ -2,6 +2,7 @@ import { parseIntFlag } from "../cli/parse-flag.ts";
 import { parseFileLineColumn } from "../cli/parse-target.ts";
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
+import { colorize, shouldEnableColor } from "../formatter/color.ts";
 import { shortPath } from "../formatter/path.ts";
 
 registerCommand("break", async (args) => {
@@ -59,6 +60,7 @@ registerCommand("break", async (args) => {
 	const logTemplate = typeof args.flags.log === "string" ? args.flags.log : undefined;
 
 	const client = new DaemonClient(session);
+	const cc = colorize(shouldEnableColor(args.global.color));
 
 	// If --log is provided, create a logpoint instead
 	if (logTemplate) {
@@ -84,7 +86,7 @@ registerCommand("break", async (args) => {
 			console.log(JSON.stringify(data, null, 2));
 		} else {
 			const loc = `${shortPath(data.location.url)}:${data.location.line}`;
-			console.log(`${data.ref} set at ${loc} (log: ${logTemplate})`);
+			console.log(`${cc(data.ref, "magenta")} set at ${cc(loc, "cyan")} (log: ${logTemplate})`);
 		}
 
 		return 0;
@@ -118,12 +120,12 @@ registerCommand("break", async (args) => {
 		console.log(JSON.stringify(data, null, 2));
 	} else {
 		const loc = `${shortPath(data.location.url)}:${data.location.line}`;
-		let msg = `${data.ref} set at ${loc}`;
+		let msg = `${cc(data.ref, "magenta")} set at ${cc(loc, "cyan")}`;
 		if (condition) {
-			msg += ` (condition: ${condition})`;
+			msg += ` ${cc(`(condition: ${condition})`, "gray")}`;
 		}
 		if (hitCount) {
-			msg += ` (hit-count: ${hitCount})`;
+			msg += ` ${cc(`(hit-count: ${hitCount})`, "gray")}`;
 		}
 		console.log(msg);
 	}

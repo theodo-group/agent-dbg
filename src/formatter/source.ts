@@ -7,6 +7,12 @@ export interface SourceLine {
 }
 
 import { MAX_SOURCE_LINE_WIDTH } from "../constants.ts";
+import { colorize, highlightLine, type Language } from "./color.ts";
+
+export interface FormatSourceOptions {
+	color?: boolean;
+	language?: Language;
+}
 
 /** Trim a long line to a window around the column, adding … on truncated sides. Returns trimmed content and adjusted column offset (0-based). */
 function trimLine(content: string, column?: number): { text: string; caretOffset?: number } {
@@ -41,8 +47,12 @@ function trimLine(content: string, column?: number): { text: string; caretOffset
 	return { text: `${prefix}${content.slice(start, end)}${suffix}`, caretOffset: adjustedCaret };
 }
 
-export function formatSource(lines: SourceLine[]): string {
+export function formatSource(lines: SourceLine[], opts?: FormatSourceOptions): string {
 	if (lines.length === 0) return "";
+
+	const color = opts?.color ?? false;
+	const lang = opts?.language ?? "unknown";
+	const cc = colorize(color);
 
 	// Determine the max line number width for alignment
 	const maxLineNum = Math.max(...lines.map((l) => l.lineNumber));
@@ -59,17 +69,32 @@ export function formatSource(lines: SourceLine[]): string {
 		} else if (line.hasBreakpoint) {
 			marker = " \u25CF";
 		}
+
 		const trimmed = line.isCurrent
 			? trimLine(line.content, line.currentColumn)
 			: trimLine(line.content);
-		result.push(`${marker} ${num}\u2502${trimmed.text}`);
+
+		// Apply color to marker
+		let coloredMarker = marker;
+		if (color) {
+			if (line.isCurrent) {
+				coloredMarker = cc(marker, "brightYellow");
+			} else if (line.hasBreakpoint) {
+				coloredMarker = cc(marker, "red");
+			}
+		}
+
+		const coloredNum = cc(num, "gray");
+		const coloredContent = color ? highlightLine(trimmed.text, lang) : trimmed.text;
+
+		result.push(`${coloredMarker} ${coloredNum}\u2502${coloredContent}`);
 
 		// Add column indicator under current line
 		if (line.isCurrent && trimmed.caretOffset !== undefined && trimmed.caretOffset >= 0) {
 			const gutter = " ".repeat(numWidth + 4); // marker(2) + space(1) + numWidth + │(1)
 			// Preserve tabs from source so ^ aligns in terminal
 			const indent = trimmed.text.slice(0, trimmed.caretOffset).replace(/[^\t]/g, " ");
-			result.push(`${gutter}${indent}^`);
+			result.push(`${gutter}${indent}${cc("^", "brightYellow")}`);
 		}
 	}
 	return result.join("\n");

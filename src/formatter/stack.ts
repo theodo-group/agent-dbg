@@ -1,3 +1,4 @@
+import { colorize } from "./color.ts";
 import { shortPath } from "./path.ts";
 
 export interface StackFrame {
@@ -10,7 +11,12 @@ export interface StackFrame {
 	isBlackboxed?: boolean;
 }
 
-export function formatStack(frames: StackFrame[]): string {
+export interface FormatStackOptions {
+	color?: boolean;
+}
+
+export function formatStack(frames: StackFrame[], opts?: FormatStackOptions): string {
+	const cc = colorize(opts?.color ?? false);
 	const outputLines: string[] = [];
 
 	// First pass: collapse consecutive blackboxed frames and compute column widths
@@ -49,14 +55,14 @@ export function formatStack(frames: StackFrame[]): string {
 				seg.blackboxedCount === 1
 					? "\u250A ... 1 framework frame (blackboxed)"
 					: `\u250A ... ${seg.blackboxedCount} framework frames (blackboxed)`;
-			outputLines.push(label);
+			outputLines.push(cc(label, "gray"));
 			continue;
 		}
 
 		const frame = seg;
 
 		if (frame.isAsync) {
-			outputLines.push("\u250A async gap");
+			outputLines.push(cc("\u250A async gap", "gray"));
 		}
 
 		const ref = frame.ref.padEnd(maxRefLen);
@@ -66,7 +72,8 @@ export function formatStack(frames: StackFrame[]): string {
 			frame.column !== undefined
 				? `${file}:${frame.line}:${frame.column}`
 				: `${file}:${frame.line}`;
-		outputLines.push(`${ref}  ${name}  ${loc}`);
+
+		outputLines.push(`${cc(ref, "gray")}  ${cc(name, "yellow")}  ${cc(loc, "gray")}`);
 	}
 
 	return outputLines.join("\n");

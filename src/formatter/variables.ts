@@ -1,8 +1,14 @@
+import { type Colorizer, colorize } from "./color.ts";
+
 export interface Variable {
 	ref: string;
 	name: string;
 	value: string;
 	scope?: string;
+}
+
+export interface FormatVariablesOptions {
+	color?: boolean;
 }
 
 const SCOPE_LABELS: Record<string, string> = {
@@ -17,7 +23,7 @@ const SCOPE_LABELS: Record<string, string> = {
 	"wasm-expression-stack": "WASM Stack",
 };
 
-function formatGroup(vars: Variable[]): string {
+function formatGroup(vars: Variable[], cc: Colorizer): string {
 	if (vars.length === 0) return "";
 
 	const maxRefLen = Math.max(...vars.map((v) => v.ref.length));
@@ -27,13 +33,15 @@ function formatGroup(vars: Variable[]): string {
 		.map((v) => {
 			const ref = v.ref.padEnd(maxRefLen);
 			const name = v.name.padEnd(maxNameLen);
-			return `${ref}  ${name}  ${v.value}`;
+			return `${cc(ref, "gray")}  ${cc(name, "cyan")}  ${v.value}`;
 		})
 		.join("\n");
 }
 
-export function formatVariables(vars: Variable[]): string {
+export function formatVariables(vars: Variable[], opts?: FormatVariablesOptions): string {
 	if (vars.length === 0) return "";
+
+	const cc = colorize(opts?.color ?? false);
 
 	// Collect unique scopes in order of appearance
 	const scopeOrder: string[] = [];
@@ -51,7 +59,7 @@ export function formatVariables(vars: Variable[]): string {
 
 	// Single scope: no header needed
 	if (scopeOrder.length === 1) {
-		return formatGroup(vars);
+		return formatGroup(vars, cc);
 	}
 
 	// Multiple scopes: group with headers
@@ -60,7 +68,7 @@ export function formatVariables(vars: Variable[]): string {
 		const group = groups.get(scope);
 		if (!group || group.length === 0) continue;
 		const label = SCOPE_LABELS[scope] ?? scope;
-		sections.push(`${label}:\n${formatGroup(group)}`);
+		sections.push(`${cc(`${label}:`, "bold")}\n${formatGroup(group, cc)}`);
 	}
 
 	return sections.join("\n\n");

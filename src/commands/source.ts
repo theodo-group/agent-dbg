@@ -1,6 +1,7 @@
 import { parseIntFlag } from "../cli/parse-flag.ts";
 import { registerCommand } from "../cli/registry.ts";
 import { DaemonClient } from "../daemon/client.ts";
+import { detectLanguage, shouldEnableColor } from "../formatter/color.ts";
 import { shortPath } from "../formatter/path.ts";
 import type { SourceLine } from "../formatter/source.ts";
 import { formatSource } from "../formatter/source.ts";
@@ -48,13 +49,14 @@ registerCommand("source", async (args) => {
 		return 0;
 	}
 
+	const color = shouldEnableColor(args.global.color);
 	console.log(`Source: ${shortPath(data.url)}`);
 	const sourceLines: SourceLine[] = data.lines.map((l) => ({
 		lineNumber: l.line,
 		content: l.text,
 		isCurrent: l.current,
 	}));
-	console.log(formatSource(sourceLines));
+	console.log(formatSource(sourceLines, { color, language: detectLanguage(data.url) }));
 
 	return 0;
 });
