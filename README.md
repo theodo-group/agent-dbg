@@ -19,7 +19,7 @@ Inspired by Vercel's [agent-browser](https://github.com/vercel-labs/agent-browse
 | Bun | JavaScript / TypeScript | Supported | WebKit Inspector (JSC) |
 | LLDB | C / C++ / Rust / Swift | Supported | DAP (Debug Adapter Protocol) |
 | Deno | JavaScript / TypeScript | Planned | V8 Inspector (CDP) |
-| Python (debugpy) | Python | Planned | DAP |
+| Python (debugpy) | Python | Supported | DAP |
 | Go (delve) | Go | Planned | DAP |
 | Java (JDWP) | Java / Kotlin | Planned | DAP |
 
