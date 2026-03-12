@@ -29,6 +29,6 @@ export function getDaemonLogPath(session: string): string {
 export function ensureSocketDir(): void {
 	const dir = getSocketDir();
 	if (!existsSync(dir)) {
-		mkdirSync(dir, { recursive: true });
+		mkdirSync(dir, { recursive: true, mode: 0o700 });
 	}
 }
