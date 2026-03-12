@@ -20,12 +20,16 @@ describe("Inspection: eval", () => {
 		}));
 
 	test("eval accesses object properties", () =>
-		withDebuggerSession("test-eval-obj-prop", "tests/fixtures/js/inspect-app.js", async (session) => {
-			const result = await session.eval("obj.name");
-			expect(result.ref).toMatch(/^@v/);
-			expect(result.type).toBe("string");
-			expect(result.value).toContain("test");
-		}));
+		withDebuggerSession(
+			"test-eval-obj-prop",
+			"tests/fixtures/js/inspect-app.js",
+			async (session) => {
+				const result = await session.eval("obj.name");
+				expect(result.ref).toMatch(/^@v/);
+				expect(result.type).toBe("string");
+				expect(result.value).toContain("test");
+			},
+		));
 
 	test("eval with string concatenation", () =>
 		withDebuggerSession("test-eval-concat", "tests/fixtures/js/inspect-app.js", async (session) => {
@@ -171,9 +175,13 @@ describe("Inspection: props", () => {
 		}));
 
 	test("getProps on unknown ref throws", () =>
-		withDebuggerSession("test-props-unknown", "tests/fixtures/js/inspect-app.js", async (session) => {
-			await expect(session.getProps("@v999")).rejects.toThrow("Unknown ref");
-		}));
+		withDebuggerSession(
+			"test-props-unknown",
+			"tests/fixtures/js/inspect-app.js",
+			async (session) => {
+				await expect(session.getProps("@v999")).rejects.toThrow("Unknown ref");
+			},
+		));
 
 	test("getProps on primitive ref throws gracefully", () =>
 		withDebuggerSession(

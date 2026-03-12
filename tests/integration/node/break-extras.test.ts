@@ -18,16 +18,20 @@ describe("break-toggle", () => {
 		}));
 
 	test("toggle all disables and re-enables all breakpoints", () =>
-		withPausedSession("test-break-toggle-all", "tests/fixtures/js/simple-app.js", async (session) => {
-			await session.setBreakpoint("tests/fixtures/js/simple-app.js", 5);
-			await session.setBreakpoint("tests/fixtures/js/simple-app.js", 11);
+		withPausedSession(
+			"test-break-toggle-all",
+			"tests/fixtures/js/simple-app.js",
+			async (session) => {
+				await session.setBreakpoint("tests/fixtures/js/simple-app.js", 5);
+				await session.setBreakpoint("tests/fixtures/js/simple-app.js", 11);
 
-			await session.toggleBreakpoint("all");
-			for (const bp of session.listBreakpoints()) expect(bp.disabled).toBe(true);
+				await session.toggleBreakpoint("all");
+				for (const bp of session.listBreakpoints()) expect(bp.disabled).toBe(true);
 
-			await session.toggleBreakpoint("all");
-			for (const bp of session.listBreakpoints()) expect(bp.disabled).toBeUndefined();
-		}));
+				await session.toggleBreakpoint("all");
+				for (const bp of session.listBreakpoints()) expect(bp.disabled).toBeUndefined();
+			},
+		));
 
 	test("toggle unknown ref throws error", () =>
 		withPausedSession(
@@ -42,7 +46,11 @@ describe("break-toggle", () => {
 describe("breakable", () => {
 	test("returns valid breakable locations", () =>
 		withPausedSession("test-breakable", "tests/fixtures/js/simple-app.js", async (session) => {
-			const locations = await session.getBreakableLocations("tests/fixtures/js/simple-app.js", 4, 8);
+			const locations = await session.getBreakableLocations(
+				"tests/fixtures/js/simple-app.js",
+				4,
+				8,
+			);
 			expect(locations.length).toBeGreaterThan(0);
 			for (const loc of locations) {
 				expect(loc.line).toBeGreaterThanOrEqual(4);
@@ -52,11 +60,15 @@ describe("breakable", () => {
 		}));
 
 	test("throws for unknown file", () =>
-		withPausedSession("test-breakable-unknown", "tests/fixtures/js/simple-app.js", async (session) => {
-			await expect(session.getBreakableLocations("nonexistent.js", 1, 5)).rejects.toThrow(
-				"No loaded script matches",
-			);
-		}));
+		withPausedSession(
+			"test-breakable-unknown",
+			"tests/fixtures/js/simple-app.js",
+			async (session) => {
+				await expect(session.getBreakableLocations("nonexistent.js", 1, 5)).rejects.toThrow(
+					"No loaded script matches",
+				);
+			},
+		));
 
 	test("throws without CDP connection", async () => {
 		const session = new DebugSession("test-breakable-no-cdp");

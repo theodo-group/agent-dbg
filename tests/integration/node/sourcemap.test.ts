@@ -41,17 +41,13 @@ describe("Source map integration", () => {
 		}));
 
 	test("buildState source shows TypeScript content", () =>
-		withPausedSession(
-			"test-sm-state-source",
-			"tests/fixtures/ts/dist/app.js",
-			async (session) => {
-				await session.setBreakpoint("app.ts", 8);
-				await session.continue();
-				await session.waitForState("paused");
-				const state = await session.buildState({ code: true });
-				expect(state.source?.lines.map((l) => l.text).join("\n")).toContain("Person");
-			},
-		));
+		withPausedSession("test-sm-state-source", "tests/fixtures/ts/dist/app.js", async (session) => {
+			await session.setBreakpoint("app.ts", 8);
+			await session.continue();
+			await session.waitForState("paused");
+			const state = await session.buildState({ code: true });
+			expect(state.source?.lines.map((l) => l.text).join("\n")).toContain("Person");
+		}));
 
 	test("listBreakpoints shows .ts file locations", () =>
 		withPausedSession("test-sm-breakls", "tests/fixtures/ts/dist/app.js", async (session) => {

@@ -9,8 +9,8 @@ export async function buildState(
 	if (session.sessionState !== "paused" || !session.cdp || !session.pauseInfo) {
 		const snapshot: StateSnapshot = { status: session.sessionState };
 		if (session.sessionState === "idle" && session.exceptionEntries.length > 0) {
-			const last = session.exceptionEntries[session.exceptionEntries.length - 1]!;
-			snapshot.lastException = { text: last.text, description: last.description };
+			const last = session.exceptionEntries.at(-1);
+			if (last) snapshot.lastException = { text: last.text, description: last.description };
 		}
 		return snapshot;
 	}

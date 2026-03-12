@@ -22,7 +22,9 @@ async function readStderrUntilInspector(stderr: ReadableStream<Uint8Array>): Pro
 describe("DebugSession integration", () => {
 	test("launch with brk pauses at first line", () =>
 		withSession("test-launch", async (session) => {
-			const result = await session.launch(["node", "tests/fixtures/js/simple-app.js"], { brk: true });
+			const result = await session.launch(["node", "tests/fixtures/js/simple-app.js"], {
+				brk: true,
+			});
 			await session.waitForState("paused");
 			expect(result.pid).toBeGreaterThan(0);
 			expect(result.wsUrl).toMatch(/^ws:\/\//);

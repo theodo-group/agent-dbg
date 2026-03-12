@@ -353,8 +353,8 @@ export class DebugSession {
 		}
 
 		if (this.state === "idle" && this.exceptionEntries.length > 0) {
-			const last = this.exceptionEntries[this.exceptionEntries.length - 1]!;
-			status.lastException = { text: last.text, description: last.description };
+			const last = this.exceptionEntries.at(-1);
+			if (last) status.lastException = { text: last.text, description: last.description };
 		}
 
 		return status;

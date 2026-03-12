@@ -4,7 +4,9 @@ import { withSession } from "../../helpers.ts";
 describe("Bun debugging", () => {
 	test("launches and pauses with --inspect-brk", () =>
 		withSession("bun-test-launch", async (session) => {
-			const result = await session.launch(["bun", "tests/fixtures/js/simple-app.js"], { brk: true });
+			const result = await session.launch(["bun", "tests/fixtures/js/simple-app.js"], {
+				brk: true,
+			});
 			expect(result.paused).toBe(true);
 			expect(result.pid).toBeGreaterThan(0);
 			expect(result.wsUrl).toContain("ws://");

@@ -12,11 +12,15 @@ describe("Mutation: setVariable", () => {
 		}));
 
 	test("set variable returns old value", () =>
-		withDebuggerSession("test-set-var-old", "tests/fixtures/js/mutation-app.js", async (session) => {
-			const result = await session.setVariable("counter", "99");
-			expect(result.oldValue).toBe("0");
-			expect(result.newValue).toBe("99");
-		}));
+		withDebuggerSession(
+			"test-set-var-old",
+			"tests/fixtures/js/mutation-app.js",
+			async (session) => {
+				const result = await session.setVariable("counter", "99");
+				expect(result.oldValue).toBe("0");
+				expect(result.newValue).toBe("99");
+			},
+		));
 
 	test("set variable throws when not paused", () =>
 		withSession("test-set-var-not-paused", async (session) => {
@@ -57,14 +61,18 @@ describe("Mutation: hotpatch", () => {
 		}));
 
 	test("hotpatch dry-run does not modify source", () =>
-		withDebuggerSession("test-hotpatch-dry", "tests/fixtures/js/mutation-app.js", async (session) => {
-			const source = await session.getSource({ file: "mutation-app.js", all: true });
-			const original = source.lines.map((l) => l.text).join("\n");
-			const modified = original.replace("counter++", "counter += 100");
-			await session.hotpatch("mutation-app.js", modified, { dryRun: true });
-			const after = await session.getSource({ file: "mutation-app.js", all: true });
-			expect(after.lines.map((l) => l.text).join("\n")).toContain("counter++");
-		}));
+		withDebuggerSession(
+			"test-hotpatch-dry",
+			"tests/fixtures/js/mutation-app.js",
+			async (session) => {
+				const source = await session.getSource({ file: "mutation-app.js", all: true });
+				const original = source.lines.map((l) => l.text).join("\n");
+				const modified = original.replace("counter++", "counter += 100");
+				await session.hotpatch("mutation-app.js", modified, { dryRun: true });
+				const after = await session.getSource({ file: "mutation-app.js", all: true });
+				expect(after.lines.map((l) => l.text).join("\n")).toContain("counter++");
+			},
+		));
 
 	test("hotpatch works when edited function is on the call stack", () =>
 		withPausedSession(
